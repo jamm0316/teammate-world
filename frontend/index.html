@@ -1,0 +1,601 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;900&family=Jua&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#f3eefb; --mut:#a79cc4;
+    --g1:#ff6b6b; --g2:#ffb454; --g3:#2ec4b6; --g4:#8b8bff;
+    --hot:#ff7a59; --hot2:#ffb454;
+    --o:#3fd6c4; --x:#ff7a8a;
+    --basic:#8aa0c8; --rare:#5b8cff; --legend:#ffcf3a;
+    --display:'Black Han Sans',sans-serif; --round:'Jua',sans-serif; --body:'Gothic A1',sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--body);
+    background:radial-gradient(120% 90% at 80% -10%,rgba(255,122,89,.14),transparent 55%),
+               radial-gradient(120% 90% at -10% 0%,rgba(139,139,255,.14),transparent 55%),#14111d}
+  .app{max-width:980px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+  /* ============ ONBOARD / GACHA (narrow card) ============ */
+  .card{max-width:420px;margin:auto;padding:30px 24px;width:100%;animation:fade .45s ease}
+  .logo{font-family:var(--display);font-size:44px;line-height:1.02;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo small{display:block;font-family:var(--round);font-size:14px;color:var(--mut);-webkit-text-fill-color:var(--mut);margin-top:8px}
+  h2{font-family:var(--round);font-weight:400;font-size:15px;margin:24px 0 8px;color:var(--ink)}
+  .field{width:100%;background:#241f37;border:1.5px solid #3a3352;color:var(--ink);border-radius:14px;
+    padding:15px 16px;font-size:16px;font-family:var(--body);outline:none}
+  .field:focus{border-color:var(--hot)}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .pick{padding:14px 0;border-radius:14px;border:1.5px solid #3a3352;background:#241f37;
+    font-family:var(--round);font-size:15px;color:var(--mut);cursor:pointer;transition:.15s;text-align:center}
+  .pick.on{color:#15121f;font-weight:700;transform:translateY(-2px);background:var(--hot);border-color:var(--hot)}
+  .pick[data-g="1"].on{background:var(--g1);border-color:var(--g1)}
+  .pick[data-g="2"].on{background:var(--g2);border-color:var(--g2)}
+  .pick[data-g="3"].on{background:var(--g3);border-color:var(--g3)}
+  .pick[data-g="4"].on{background:var(--g4);border-color:var(--g4)}
+  .cta{margin-top:26px;width:100%;border:none;border-radius:16px;padding:17px;cursor:pointer;
+    font-family:var(--round);font-size:18px;color:#221206;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));box-shadow:0 10px 24px -8px rgba(255,122,89,.6)}
+  .cta:disabled{filter:grayscale(.7) brightness(.7);box-shadow:none;cursor:not-allowed}
+  .ghost{margin-top:10px;width:100%;border:1.5px solid #3a3352;background:transparent;color:var(--mut);
+    border-radius:14px;padding:13px;font-family:var(--round);font-size:14px;cursor:pointer}
+
+  /* gacha */
+  .gacha{text-align:center}
+  .prob{display:flex;justify-content:center;gap:8px;margin:14px 0 20px;flex-wrap:wrap}
+  .prob span{font-family:var(--round);font-size:12px;padding:6px 11px;border-radius:20px;background:#241f37;border:1px solid #3a3352}
+  .prob .b{color:var(--basic)} .prob .r{color:var(--rare)} .prob .l{color:var(--legend)}
+  .orb{width:200px;height:200px;margin:6px auto;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    position:relative;background:radial-gradient(circle at 35% 30%,#3a3352,#1b1730);box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+  .orb.shake{animation:shake .6s ease}
+  .reveal{animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+  .rtag{font-family:var(--display);font-size:30px;margin-top:6px;letter-spacing:1px}
+  .rtag.basic{color:var(--basic)} .rtag.rare{color:var(--rare);text-shadow:0 0 16px rgba(91,140,255,.6)}
+  .rtag.legend{color:var(--legend);text-shadow:0 0 22px rgba(255,207,58,.8)}
+  .rsub{font-family:var(--round);font-size:14px;color:var(--mut);margin-top:2px}
+  @keyframes shake{0%,100%{transform:translateX(0) rotate(0)}20%{transform:translateX(-6px) rotate(-4deg)}
+    40%{transform:translateX(6px) rotate(4deg)}60%{transform:translateX(-5px) rotate(-3deg)}80%{transform:translateX(5px) rotate(3deg)}}
+  @keyframes pop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+  .burst{position:absolute;inset:-20px;border-radius:50%;pointer-events:none}
+  .burst.on{animation:burst .6s ease forwards}
+  @keyframes burst{from{box-shadow:0 0 0 0 rgba(255,207,58,.55)}to{box-shadow:0 0 0 60px rgba(255,207,58,0)}}
+
+  /* ============ GAME WORLD (landscape) ============ */
+  #game{display:none;flex:1;flex-direction:column;animation:fade .4s ease}
+  .hud{display:flex;align-items:center;gap:8px;padding:10px 14px}
+  .hud .mark{font-family:var(--display);font-size:18px;background:linear-gradient(100deg,var(--hot),var(--hot2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hud .right{margin-left:auto;display:flex;gap:8px}
+  .btn{border:1.5px solid #3a3352;background:#241f37;color:var(--ink);border-radius:12px;
+    padding:9px 13px;font-family:var(--round);font-size:13px;cursor:pointer}
+  .btn:active{transform:scale(.96)}
+  .btn.hot{background:linear-gradient(100deg,var(--hot),var(--hot2));color:#221206;border:none}
+  .btn.off{opacity:.5}
+
+  .stage-wrap{padding:0 12px 14px}
+  .stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;cursor:pointer;
+    background:linear-gradient(180deg,#2f6a4a,#2a5c42);
+    box-shadow:0 18px 50px -12px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.4);touch-action:none}
+  /* the scrolling world (larger than the viewport) */
+  .world{position:absolute;left:0;top:0;will-change:transform;
+    background:
+      radial-gradient(80% 60% at 30% 25%, rgba(255,255,255,.05), transparent 60%),
+      linear-gradient(180deg,#3a7a55 0%, #2f6a4a 45%, #285740 100%)}
+  .grid{position:absolute;inset:0;opacity:.35;
+    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
+    background-size:48px 48px}
+  .bush{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4f9a6a,#2f6a48);box-shadow:inset -4px -6px 10px rgba(0,0,0,.25)}
+  .tree{position:absolute;width:48px;height:48px}
+
+  /* booth zones */
+  .booth{position:absolute;border-radius:20px;border:2px dashed rgba(255,255,255,.22);
+    background:rgba(0,0,0,.10);display:flex;align-items:flex-start;justify-content:center}
+  .booth .name{margin-top:-13px;font-family:var(--round);font-size:13px;color:#fff;
+    background:rgba(0,0,0,.5);padding:3px 12px;border-radius:20px;white-space:nowrap}
+  .booth.tinted{background:rgba(255,255,255,.05)}
+
+  .pad{position:absolute;transform:translate(-50%,-50%);border-radius:24px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--display);font-size:48px;transition:box-shadow .25s}
+  .pad .lab{position:absolute;top:6px;font-family:var(--round);font-size:11px;opacity:.85}
+  .pad.O{background:radial-gradient(circle,rgba(63,214,196,.32),rgba(63,214,196,.10));border:3px solid var(--o);color:var(--o);
+    box-shadow:0 0 28px rgba(63,214,196,.35), inset 0 0 30px rgba(63,214,196,.25)}
+  .pad.X{background:radial-gradient(circle,rgba(255,122,138,.32),rgba(255,122,138,.10));border:3px solid var(--x);color:var(--x);
+    box-shadow:0 0 28px rgba(255,122,138,.35), inset 0 0 30px rgba(255,122,138,.25)}
+
+  /* scoreboard (LED) — fixed to viewport */
+  .board{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(92%,520px);
+    background:linear-gradient(#0e0c16,#191527);border:1px solid #3a3352;border-radius:14px;
+    padding:9px 14px;box-shadow:0 10px 24px -10px #000;z-index:8;transition:padding .2s, width .2s}
+  .board .q{font-family:var(--round);font-size:clamp(12px,2.4vw,15px);text-align:center;color:var(--ink);line-height:1.3;padding:0 18px}
+  .board .qn{color:var(--hot2);font-size:11px}
+  .board .counts{display:flex;justify-content:center;gap:18px;margin-top:6px}
+  .board .c{font-family:var(--display);font-size:clamp(20px,5vw,28px);display:flex;align-items:baseline;gap:6px}
+  .board .c .t{font-family:var(--round);font-size:13px}
+  .board .c.o{color:var(--o)} .board .c.x{color:var(--x)}
+  .board .c .v{min-width:28px;text-align:center;text-shadow:0 0 14px currentColor}
+  .board .toggle{position:absolute;top:6px;right:8px;width:24px;height:24px;border:none;cursor:pointer;
+    background:#2c2640;color:var(--mut);border-radius:8px;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .board .toggle:active{transform:scale(.92)}
+  .board .body{overflow:hidden;transition:max-height .22s ease, opacity .18s;max-height:120px;opacity:1}
+  .board.collapsed{width:min(72%,360px);padding:6px 14px}
+  .board.collapsed .body{max-height:0;opacity:0;margin:0}
+  .board .mini-q{display:none;font-family:var(--round);font-size:12px;color:var(--mut);text-align:center;padding:0 26px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .board.collapsed .mini-q{display:block}
+
+  /* minimap */
+  .mini{position:absolute;right:10px;bottom:10px;width:118px;border:1px solid rgba(255,255,255,.25);
+    border-radius:8px;overflow:hidden;z-index:8;background:rgba(20,30,24,.7)}
+  .mini canvas{display:block;width:100%}
+
+  .hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:7;
+    font-family:var(--round);font-size:12px;color:#fff;background:rgba(0,0,0,.34);padding:6px 14px;border-radius:20px}
+
+  /* avatars live INSIDE .world */
+  #avatars{position:absolute;inset:0;pointer-events:none}
+  .av{position:absolute;width:56px;height:74px;transform:translate(-50%,-100%);transition:none;z-index:3}
+  .av .tag{position:absolute;top:-4px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--round);font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:10px;display:flex;align-items:center;gap:5px}
+  .av .tag i{font-style:normal;font-size:10px;font-weight:700;color:#15121f;padding:1px 5px;border-radius:7px;line-height:1.3}
+  .av .cbox{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:56px;height:62px}
+  .av .cbox svg{width:100%;height:100%;display:block}
+  .av.left .cbox{transform:translateX(-50%) scaleX(-1)}
+  .av.moving .cbox{animation:bob .4s infinite}
+  @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -3px}}
+  .av.rare .cbox svg{filter:drop-shadow(0 0 4px rgba(92,200,255,.95))}
+  .av.legend .cbox svg{filter:drop-shadow(0 0 5px rgba(255,213,74,.95)) drop-shadow(0 0 11px rgba(255,180,40,.55))}
+  .av.legend .ring{position:absolute;bottom:2px;left:50%;width:46px;height:18px;transform:translateX(-50%);
+    border-radius:50%;border:2px solid rgba(255,213,74,.8);box-shadow:0 0 10px rgba(255,200,60,.6);animation:ring 1.6s infinite}
+  @keyframes ring{0%{opacity:.75;transform:translateX(-50%) scale(.8)}100%{opacity:0;transform:translateX(-50%) scale(1.5)}}
+  .av .spark{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,#fff,rgba(255,255,255,0) 70%);animation:twk 1.5s infinite}
+  .av.rare .spark{background:radial-gradient(circle,#cdeeff,rgba(205,238,255,0) 70%)}
+  .av.legend .spark{background:radial-gradient(circle,#fff3c4,rgba(255,243,196,0) 70%);width:6px;height:6px}
+  @keyframes twk{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1)}}
+  .av.me .tag{background:rgba(255,122,89,.85)}
+
+  /* rotate hint */
+  #rotate{display:none;position:fixed;inset:0;background:#14111d;z-index:50;
+    flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
+  #rotate .ic{font-size:54px;animation:spin 2s ease-in-out infinite}
+  @keyframes spin{0%,100%{transform:rotate(0)}50%{transform:rotate(90deg)}}
+  @media (max-width:760px) and (orientation:portrait){ #rotate.show{display:flex} }
+
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;
+    background:var(--ink);color:#15121f;font-family:var(--round);font-size:14px;padding:10px 18px;border-radius:30px;z-index:60;transition:.25s;pointer-events:none}
+  .pop.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+
+<div class="app">
+  <div id="screen"></div>
+  <div id="game">
+    <div class="hud">
+      <div class="mark">팀메이트 라이브</div>
+      <div class="right">
+        <button class="btn" id="btnNpc">NPC ON</button>
+        <button class="btn hot" id="btnNext">다음 문제 ▶</button>
+        <button class="btn" id="btnReset">↺</button>
+      </div>
+    </div>
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <div class="world" id="world">
+          <div class="ground" id="ground"></div>
+          <div id="avatars"></div>
+        </div>
+        <div class="board" id="board"></div>
+        <div class="mini" id="mini"><canvas id="miniC" width="118" height="74"></canvas></div>
+        <div class="hint">바닥을 탭하면 그쪽으로 이동 · 부스를 돌아다녀 보세요</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rotate"><div class="ic">📱</div><div style="font-family:var(--round)">기기를 가로로 돌려주세요</div>
+  <button class="ghost" style="max-width:200px" onclick="document.getElementById('rotate').classList.remove('show')">그냥 볼게요</button></div>
+<div class="pop" id="pop"></div>
+
+<script>
+/* ===================== config ===================== */
+const GEN={1:'1기',2:'2기',3:'3기',4:'4기'}, GENC={1:'#ff6b6b',2:'#ffb454',3:'#2ec4b6',4:'#8b8bff'};
+const QUESTIONS=[
+  '나는 멘토링 모임에 둘 이상 참석했다',
+  '점심은 면 요리가 밥보다 좋다',
+  '재택근무가 출근보다 생산적이다',
+  '나는 오늘 처음 보는 사람과 대화했다',
+  '커피보다 차(茶)를 더 자주 마신다',
+];
+const RARITY={
+  basic :{label:'기본',  prob:80, color:'#8aa0c8', flavor:'평범하지만 든든한 기본 캐릭터!'},
+  rare  :{label:'레어',  prob:17, color:'#5b8cff', flavor:'오! 레어 캐릭터를 뽑았어요 ✨'},
+  legend:{label:'레전드',prob:3,  color:'#ffcf3a', flavor:'★ 축하합니다! 전설의 캐릭터 ★'},
+};
+const OUTFIT={ basic:['#6c8cff','#57c2a3','#ff8fa3','#ffb454','#9b8cff','#ff9f6b'], rare:['#3f6bff','#12b8a0','#c05cff','#ff5c8a'], legend:['#ffcf3a'] };
+const HAIRC=['#ff9ecb','#7fe0c8','#b8a8ff','#dcdcf0','#ffd98a','#ff7a6b','#6b4a32','#2a2440','#ffb38a','#8fb8ff'];
+const EYEC=['#3aa0ff','#38b48b','#ff7aa8','#8a5a2b','#7c5cff','#16b8a6'];
+const SKIN=['#ffe0c4','#ffd2ad','#f0bd95'];
+const STYLE={ M:['short','spiky','sweep'], F:['long','twin','bun','bob','wavy'] };
+// ---- world (larger than viewport) in world pixels ----
+const WORLD={w:1800,h:1100};
+const SPEED=190; // px per second
+// booth zones
+const BOOTHS=[
+  {id:'plaza', name:'🏛 중앙 광장',     x:650, y:430, w:500, h:320, tint:true},
+  {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:560, y:60,  w:680, h:300},
+  {id:'net',   name:'🤝 기수 교류존',   x:80,  y:470, w:430, h:430},
+  {id:'photo', name:'📸 포토 / 기록존',  x:1240,y:120, w:470, h:360},
+  {id:'rest',  name:'☕ 휴식존',         x:1280,y:620, w:430, h:380},
+];
+// O/X pads live in the quiz booth (world px, center-based)
+const PAD_O={cx:760, cy:210, w:230, h:150}, PAD_X={cx:1040, cy:210, w:230, h:150};
+
+/* ===================== storage layer ===================== */
+const HAS=(typeof window!=='undefined'&&window.storage&&typeof window.storage.list==='function');
+let SHARED_OK=HAS; const mem={true:{},false:{}};
+async function sset(k,v,sh){const val=typeof v==='string'?v:JSON.stringify(v);
+  if(HAS){try{await window.storage.set(k,val,sh);return;}catch(e){SHARED_OK=false;}} mem[!!sh][k]=val;}
+async function sget(k,sh){if(HAS){try{const r=await window.storage.get(k,sh);return r?r.value:null;}catch(e){return mem[!!sh][k]??null;}} return mem[!!sh][k]??null;}
+async function slist(p,sh){if(HAS){try{const r=await window.storage.list(p,sh);return(r&&r.keys)?r.keys:[];}catch(e){SHARED_OK=false;}} return Object.keys(mem[!!sh]).filter(k=>k.startsWith(p));}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ===================== character art ===================== */
+function buildChar(c){
+  const outfit=c.outfit||'#6c8cff', outfitD=shade(outfit,-24), outfitL=shade(outfit,22);
+  const hair=HAIRC[(c.hairCI!=null?c.hairCI:c.hairI)||0]||'#6b4a32', hairD=shade(hair,-28), hairL=shade(hair,30);
+  const skin=SKIN[c.skinI||0]||'#ffe0c4', skinD=shade(skin,-16);
+  const eye=EYEC[c.eyeI||0]||'#3aa0ff';
+  const gender=c.gender||'F', style=c.style||(gender==='M'?'short':'long');
+  const shoe='#3a3550', shoeL='#565077', dk='#3a2a38', wt='#ffffff', bl='rgba(255,120,135,.5)', mo='#c47b72', ol='#473a47', eyeline='#7a6470';
+  const rareA='#5cc8ff', rareA2='#bdeaff', rareGem='#ff5ca8';
+  const legA='#ffd54a', legA2='#fff3c4', legGem='#ff6b6b', wing='#fff6e0';
+
+  const W=44,H=56, g=Array.from({length:H},()=>Array(W).fill(null));
+  const inb=(x,y)=>x>=0&&x<W&&y>=0&&y<H;
+  const P=(x,y,col)=>{if(inb(Math.round(x),Math.round(y)))g[Math.round(y)][Math.round(x)]=col;};
+  const R=(x0,y0,x1,y1,col)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)P(x,y,col);};
+  const E=(cx,cy,rx,ry,col)=>{for(let y=Math.floor(cy-ry);y<=Math.ceil(cy+ry);y++)for(let x=Math.floor(cx-rx);x<=Math.ceil(cx+rx);x++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)P(x,y,col);}};
+
+  // ---- rarity back layer (capes / wings) ----
+  if(c.rarity==='rare'){
+    R(8,35,14,50,rareA); R(8,50,12,52,rareA);     // flowing cape (back)
+    R(8,35,9,50,shade(rareA,-34));                 // inner shadow
+    R(13,36,14,49,rareA2);                         // highlight edge
+  }
+  if(c.rarity==='legend'){
+    R(10,31,14,34,wing); R(7,33,12,37,wing); R(5,36,11,40,wing); R(6,40,11,43,wing); // back wing
+    P(5,36,legA);P(7,33,legA);P(10,31,legA);P(6,40,legA);
+    R(31,32,35,35,wing); R(33,35,37,38,wing); R(35,38,37,40,wing);                    // front wing
+    P(37,38,legA);P(35,32,legA);
+  }
+  // legs + shoes
+  R(18,49,20,52,skin); R(24,49,26,52,skin);
+  R(17,52,21,54,shoe); R(23,52,27,54,shoe); R(17,52,21,52,shoeL); R(23,52,27,52,shoeL);
+  // arms (sleeves) + hands
+  R(11,35,13,46,outfit); R(11,35,11,46,outfitD); R(11,46,13,49,skin);
+  R(30,35,32,46,outfit); R(32,35,32,46,outfitD); R(30,46,32,49,skin);
+  // body + shading
+  R(14,34,29,49,outfit); R(15,34,28,35,outfitL); R(14,48,29,49,outfitD);
+  R(14,36,14,47,outfitD); R(29,36,29,47,outfitD); R(19,34,24,35,shade(outfit,32));
+  // ---- rarity front trim / gem ----
+  if(c.rarity==='rare'){ R(14,40,29,40,rareA); R(20,38,23,39,rareGem); P(20,37,rareA2); }
+  if(c.rarity==='legend'){ R(14,40,29,40,legA); R(14,34,29,34,legA); R(20,37,23,39,legGem); P(20,37,legA2); }
+
+  // ---- head turned to face the side (3/4, facing right) ----
+  // back hair sits toward the back (left); darker rim + lighter core
+  E(20,18.5,15,15,hairD); E(20,18,13.7,13.7,hair);
+  if(style==='long'||style==='wavy'){R(6,18,10,42,hair); R(31,20,35,40,hair); if(style==='wavy'){R(6,42,8,45,hair);}}
+  if(style==='twin'){E(8,30,5,9,hair); E(33,30,4,8,hair); R(6,22,10,24,hairD);}
+  if(style==='bun'){E(13,10,6,6,hairD); E(13,10,4.6,4.6,hair); R(8,14,16,30,hair);}
+  if(style==='bob'){R(7,20,11,33,hair); R(33,22,36,32,hair);}
+  E(15,12,4.5,2.4,hairL); // gloss
+  // face skin shifted toward facing side
+  E(23,21,13,13,skin);
+  // soft nose bump on facing side
+  P(35,23,skin); P(35,24,skin); P(34,25,skinD);
+  // fringe swept toward the face (kept above the eyes)
+  if(style==='spiky'){for(let x=10;x<=36;x++)R(x,7,x,(x%4<2?11:14),hair); R(10,7,36,8,hairD);}
+  else if(style==='sweep'){R(10,10,36,13,hair); R(24,13,36,16,hair); R(12,14,34,14,hairD);}
+  else{R(10,9,36,13,hair); R(27,13,36,15,hair); for(let x=10;x<=26;x++)R(x,13,x,(x%6<3?14:13),hair); R(12,15,25,15,hairD); E(16,11,4,1.8,hairL);}
+
+  // ---- eyes: gentle & cute, prettier at higher rarity ----
+  const tier = c.rarity==='legend' ? 2 : (c.rarity==='rare' ? 1 : 0);
+  const eyeAt=(cx,s)=>{
+    const ss = s*(1+tier*0.12);              // bigger eyes at higher rarity
+    if(tier>=1){ R(cx-2,20,cx+2,20,eyeline); P(cx-3,21,eyeline); P(cx+3,21,eyeline); } // soft upper lash line
+    E(cx,23,2.4*ss,3.1,wt);                  // white
+    E(cx,23.6,1.9*ss,2.5,shade(eye,18));     // iris outer (lighter)
+    E(cx,24,1.5*ss,2.1,eye);                 // iris
+    E(cx,24.6,0.75*ss,1.0,dk);               // pupil
+    P(cx-1,22,wt);                          // main sparkle
+    if(tier>=1){ P(cx+1,25,'rgba(255,255,255,.85)'); } // second highlight (rare+)
+    if(tier>=2){ P(cx+2,23,'rgba(255,255,255,.6)'); }  // one extra glimmer (legend)
+    P(cx+1,26,'rgba(255,255,255,.4)');       // lower glint
+  };
+  eyeAt(25,0.82); eyeAt(31,1);
+  // soft eyebrows
+  P(24,18,eyeline); P(25,17.6,eyeline); P(30,17.4,eyeline); P(31,17.6,eyeline); P(32,18,eyeline);
+  // centered gentle smile (no pout, no blush)
+  P(26,29,mo); P(27,30,mo); P(28,30,mo); P(29,29,mo);   // upturned little smile, centered under nose
+  // accessory (head)
+  if(c.rarity==='rare'){
+    // dangling earring on the visible (front) ear
+    P(36,27,rareA2); P(36,28,rareA); P(36,29,rareGem);
+    // small hair clip
+    P(11,12,rareA); P(12,12,rareA2);
+  }
+  if(c.rarity==='legend'){
+    // ornate jeweled crown
+    R(11,5,30,7,legA); R(11,5,30,5,legA2);
+    R(13,2,13,5,legA); R(16,1,16,5,legA); R(20,0,20,5,legA); R(24,1,24,5,legA); R(28,2,28,5,legA);
+    P(16,0,legA2);P(20,0,legA2);P(24,0,legA2);
+    P(13,6,'#6bd0ff');P(16,6,legGem);P(20,5,legA2);P(24,6,legGem);P(28,6,'#6bd0ff'); // crown gems
+    // large jeweled earring on visible ear
+    P(36,26,legA2); P(37,27,legA); P(37,28,legGem); P(36,29,legGem); P(37,29,legA2);
+    // forehead jewel
+    P(24,16,legGem); P(24,15,legA2);
+  }
+
+  // 1px silhouette outline
+  const out=[];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){ if(g[y][x]!=null)continue;
+    if((inb(x-1,y)&&g[y][x-1]!=null)||(inb(x+1,y)&&g[y][x+1]!=null)||(inb(x,y-1)&&g[y-1][x]!=null)||(inb(x,y+1)&&g[y+1][x]!=null)) out.push([x,y]);
+  }
+  out.forEach(([x,y])=>g[y][x]=ol);
+  // soft shadow under feet (empty cells only)
+  for(let x=15;x<=28;x++){ if(g[55][x]==null)g[55][x]='rgba(0,0,0,.13)'; }
+
+  // run-length encode to rects
+  let rects='';
+  for(let y=0;y<H;y++){let x=0;while(x<W){const col=g[y][x];if(col==null){x++;continue;}let x2=x;while(x2+1<W&&g[y][x2+1]===col)x2++;rects+=`<rect x="${x}" y="${y}" width="${x2-x+1}" height="1" fill="${col}"/>`;x=x2+1;}}
+  return `<svg viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+function shade(hex,p){let n=parseInt(hex.slice(1),16);let r=(n>>16)+p,g=((n>>8)&255)+p,b=(n&255)+p;
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function rollRarity(){const r=Math.random()*100; if(r<3)return'legend'; if(r<20)return'rare'; return'basic';}
+function rollChar(gender){const rarity=rollRarity();const arr=OUTFIT[rarity];const styles=STYLE[gender]||STYLE.F;
+  return{gender,rarity,outfit:arr[Math.floor(Math.random()*arr.length)],
+    hairCI:Math.floor(Math.random()*HAIRC.length),eyeI:Math.floor(Math.random()*EYEC.length),
+    skinI:Math.floor(Math.random()*SKIN.length),style:styles[Math.floor(Math.random()*styles.length)]};}
+
+/* ===================== state ===================== */
+let me=null; let entities=[]; let selfE=null; let botsOn=true; let qidx=0;
+const $=s=>document.querySelector(s);
+function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clearTimeout(p._t);p._t=setTimeout(()=>p.classList.remove('show'),1500);}
+
+/* ===================== boot ===================== */
+(async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
+  if(me&&me.outfit){enterGame();} else {renderOnboard();}
+  if(window.innerWidth<760) $('#rotate').classList.add('show');
+})();
+
+/* ===================== onboarding ===================== */
+function renderOnboard(){
+  let st={nick:'',gen:null,gender:null};
+  $('#screen').innerHTML=`
+   <div class="card">
+     <div class="logo">팀메이트<br>월드<small>1~4기 다같이, 손 안에서 — POC</small></div>
+     <h2>닉네임</h2><input class="field" id="nick" maxlength="10" placeholder="예: 재명">
+     <h2>나의 기수</h2>
+     <div class="grid4">${[1,2,3,4].map(g=>`<div class="pick" data-g="${g}" data-k="gen" data-v="${g}">${g}기</div>`).join('')}</div>
+     <h2>성별 (캐릭터 외형에 반영돼요)</h2>
+     <div class="grid2"><div class="pick" data-k="gender" data-v="M">남자</div><div class="pick" data-k="gender" data-v="F">여자</div></div>
+     <button class="cta" id="go" disabled>캐릭터 뽑으러 가기 →</button>
+   </div>`;
+  $('#nick').oninput=e=>{st.nick=e.target.value;chk();};
+  document.querySelectorAll('.pick').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.k;document.querySelectorAll(`.pick[data-k="${k}"]`).forEach(x=>x.classList.remove('on'));
+    el.classList.add('on');st[k]=el.dataset.v;chk();});
+  function chk(){$('#go').disabled=!(st.nick.trim()&&st.gen&&st.gender);}
+  $('#go').onclick=()=>renderGacha({nick:st.nick.trim(),gen:+st.gen,gender:st.gender});
+}
+
+/* ===================== gacha ===================== */
+function renderGacha(base){
+  $('#screen').innerHTML=`
+   <div class="card gacha">
+     <div class="logo" style="font-size:34px">캐릭터 뽑기</div>
+     <div class="prob"><span class="b">기본 ${RARITY.basic.prob}%</span><span class="r">레어 ${RARITY.rare.prob}%</span><span class="l">레전드 ${RARITY.legend.prob}%</span></div>
+     <div class="orb" id="orb"><div class="burst" id="burst"></div><div id="orbInner" style="font-size:64px">🎁</div></div>
+     <div class="rtag" id="rtag" style="visibility:hidden">.</div>
+     <div class="rsub" id="rsub">&nbsp;</div>
+     <button class="cta" id="roll">뽑기!</button>
+     <button class="ghost" id="enter" style="display:none">이 캐릭터로 입장하기</button>
+     <button class="ghost" id="reroll" style="display:none">다시 뽑기 (데모용)</button>
+   </div>`;
+  let cur=null;
+  $('#roll').onclick=doRoll; 
+  function doRoll(){
+    $('#roll').style.display='none';
+    const orb=$('#orb');orb.classList.add('shake');
+    $('#rtag').style.visibility='hidden';$('#rsub').innerHTML='&nbsp;';$('#enter').style.display='none';$('#reroll').style.display='none';
+    setTimeout(()=>{
+      orb.classList.remove('shake');
+      cur={...base,...rollChar(base.gender),id:me?.id||uid()};
+      const R=RARITY[cur.rarity];
+      $('#orbInner').outerHTML=`<div id="orbInner" class="reveal" style="width:130px;height:130px">${buildChar(cur)}</div>`;
+      if(cur.rarity!=='basic'){const b=$('#burst');b.classList.add('on');setTimeout(()=>b.classList.remove('on'),650);}
+      const t=$('#rtag');t.textContent=R.label;t.className='rtag '+cur.rarity;t.style.visibility='visible';
+      $('#rsub').textContent=R.flavor;
+      $('#enter').style.display='block';$('#reroll').style.display='block';
+      if(cur.rarity==='legend')toast('🎉 레전드 등장!');
+    },650);
+  }
+  $('#reroll').onclick=()=>{$('#orbInner').outerHTML=`<div id="orbInner" style="font-size:64px">🎁</div>`;$('#roll').style.display='block';doRoll();};
+  $('#enter').onclick=async()=>{ me=cur; await sset('me',me,false); enterGame(); };
+}
+
+/* ===================== game world ===================== */
+let cam={x:0,y:0}, view={w:0,h:0};
+function sizeStage(){
+  const st=$('#stage'); const r=st.getBoundingClientRect();
+  view.w=r.width; view.h=r.height;
+  // scale world so it always fills viewport but stays bigger -> ensures scroll room
+  const w=$('#world'); w.style.width=WORLD.w+'px'; w.style.height=WORLD.h+'px';
+}
+function enterGame(){
+  $('#screen').innerHTML=''; $('#game').style.display='flex';
+  sizeStage(); window.addEventListener('resize',sizeStage);
+  buildGround(); buildBoard();
+  $('#btnNext').onclick=async()=>{qidx=(qidx+1)%QUESTIONS.length;await sset('quiz:idx',String(qidx),true);buildBoard();toast('다음 문제!');};
+  $('#btnNpc').onclick=()=>{botsOn=!botsOn;$('#btnNpc').textContent='NPC '+(botsOn?'ON':'OFF');$('#btnNpc').classList.toggle('off',!botsOn);if(botsOn)spawnBots();else removeBots();};
+  $('#btnReset').onclick=async()=>{await sset('me',null,false);mem.false={};location.reload();};
+  $('#stage').addEventListener('pointerdown',onTap);
+
+  // spawn in the central plaza
+  const px=BOOTHS[0].x+BOOTHS[0].w/2, py=BOOTHS[0].y+BOOTHS[0].h/2;
+  selfE={id:me.id,kind:'me',nick:me.nick,gen:me.gen,char:me,x:px,y:py,tx:px,ty:py,face:1};
+  entities=[selfE]; ensureEl(selfE);
+  cam.x=selfE.x-view.w/2; cam.y=selfE.y-view.h/2;
+  spawnBots();
+  loadQ();
+  setInterval(pushSelf,1500); setInterval(pollRemote,1500);
+  requestAnimationFrame(loop);
+}
+async function loadQ(){const v=await sget('quiz:idx',true);if(v!=null){qidx=Math.max(0,Math.min(QUESTIONS.length-1,+v));buildBoard();}}
+
+function buildGround(){
+  const g=$('#ground'); g.style.position='absolute'; g.style.inset='0';
+  let html='<div class="grid"></div>';
+  // booth zones
+  BOOTHS.forEach(b=>{ html+=`<div class="booth ${b.tint?'tinted':''}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px">
+    <div class="name">${b.name}</div></div>`; });
+  // decorative trees/bushes scattered around edges (world px)
+  const trees=[[40,260],[120,940],[1720,200],[1750,860],[520,30],[1180,40],[60,60],[900,1040],[1640,1040]];
+  trees.forEach(([x,y])=>html+=`<div class="tree" style="left:${x}px;top:${y}px;transform:translate(-50%,-90%)">
+     <svg viewBox="0 0 48 48"><rect x="21" y="34" width="6" height="14" rx="2" fill="#6b4a2e"/>
+     <circle cx="24" cy="22" r="18" fill="#3f8a59"/><circle cx="14" cy="28" r="11" fill="#347a4c"/><circle cx="34" cy="28" r="11" fill="#347a4c"/></svg></div>`);
+  const bushes=[[700,820],[1000,860],[300,300],[1500,480],[840,640]];
+  bushes.forEach(([x,y])=>html+=`<div class="bush" style="left:${x}px;top:${y}px;width:64px;height:44px;transform:translate(-50%,-50%)"></div>`);
+  // O/X pads (world px)
+  g.innerHTML=html
+   +`<div class="pad O" style="left:${PAD_O.cx}px;top:${PAD_O.cy}px;width:${PAD_O.w}px;height:${PAD_O.h}px"><span class="lab">YES</span>O</div>`
+   +`<div class="pad X" style="left:${PAD_X.cx}px;top:${PAD_X.cy}px;width:${PAD_X.w}px;height:${PAD_X.h}px"><span class="lab">NO</span>X</div>`;
+}
+let boardCollapsed=false;
+function buildBoard(){
+  const b=$('#board');
+  b.innerHTML=`<button class="toggle" id="boardToggle">${boardCollapsed?'▾':'▴'}</button>
+   <div class="mini-q">⚡ Q${qidx+1} · ${esc(QUESTIONS[qidx])}</div>
+   <div class="body">
+     <div class="q"><span class="qn">Q${qidx+1}/${QUESTIONS.length} · </span>${esc(QUESTIONS[qidx])}</div>
+     <div class="counts"><div class="c o"><span class="t">⭕</span><span class="v" id="cO">0</span></div>
+     <div class="c x"><span class="t">❌</span><span class="v" id="cX">0</span></div></div>
+   </div>`;
+  b.classList.toggle('collapsed',boardCollapsed);
+  $('#boardToggle').onclick=(e)=>{ e.stopPropagation(); boardCollapsed=!boardCollapsed;
+    b.classList.toggle('collapsed',boardCollapsed);
+    $('#boardToggle').textContent=boardCollapsed?'▾':'▴'; };
+}
+function inPad(x,y,p){return x>=p.cx-p.w/2&&x<=p.cx+p.w/2&&y>=p.cy-p.h/2&&y<=p.cy+p.h/2;}
+
+function onTap(e){
+  // ignore taps on overlay UI (scoreboard, minimap, hint, buttons) — only floor taps move the character
+  if(e.target.closest('.btn, .board, .mini, .hint'))return;
+  const r=$('#stage').getBoundingClientRect();
+  // screen point -> world point (add camera offset)
+  let wx=(e.clientX-r.left)+cam.x, wy=(e.clientY-r.top)+cam.y;
+  selfE.tx=Math.max(24,Math.min(WORLD.w-24,wx));
+  selfE.ty=Math.max(40,Math.min(WORLD.h-12,wy));
+}
+
+/* ---- bots ---- */
+const BOT_NICKS=['지은','유진','준모','전설','야코','반장','비버','민서','하늘','도윤','서아','태경'];
+function spawnBots(){
+  if(entities.some(e=>e.kind==='bot'))return;
+  const n=9;
+  for(let i=0;i<n;i++){
+    const gender=Math.random()<.5?'M':'F';
+    const b={id:'bot'+i,kind:'bot',nick:BOT_NICKS[i%BOT_NICKS.length],gen:1+Math.floor(Math.random()*4),
+      char:{gender,...rollChar(gender)},x:200+Math.random()*(WORLD.w-400),y:150+Math.random()*(WORLD.h-300),face:1,nextAt:0};
+    b.tx=b.x;b.ty=b.y; entities.push(b); ensureEl(b);
+  }
+}
+function removeBots(){entities=entities.filter(e=>{if(e.kind==='bot'){e.el?.remove();return false;}return true;});}
+function botAI(b,now){
+  if(now<b.nextAt)return;
+  b.nextAt=now+1600+Math.random()*2800;
+  const roll=Math.random();
+  if(roll<0.5){const p=Math.random()<.5?PAD_O:PAD_X; b.tx=p.cx+(Math.random()-.5)*(p.w-30); b.ty=p.cy+(Math.random()-.5)*(p.h-30);}
+  else {const z=BOOTHS[Math.floor(Math.random()*BOOTHS.length)]; b.tx=z.x+30+Math.random()*(z.w-60); b.ty=z.y+30+Math.random()*(z.h-60);}
+}
+
+/* ---- remote sync ---- */
+let lastPush=0;
+async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,x:Math.round(selfE.x),y:Math.round(selfE.y),ts:Date.now()},true); }
+async function pollRemote(){
+  const keys=await slist('p:',true); const now=Date.now(); const seen=new Set();
+  for(const k of keys){ const v=await sget(k,true); if(!v)continue; let d;try{d=JSON.parse(v);}catch(e){continue;}
+    const id=k.slice(2); if(id===me.id)continue; if(now-d.ts>12000)continue; seen.add(id);
+    let e=entities.find(x=>x.id===id);
+    if(!e){e={id,kind:'remote',nick:d.nick,gen:d.gen,char:d.char,x:d.x,y:d.y,tx:d.x,ty:d.y,face:1};entities.push(e);ensureEl(e);}
+    else {e.tx=d.x;e.ty=d.y;}
+  }
+  entities=entities.filter(e=>{if(e.kind==='remote'&&!seen.has(e.id)){e.el?.remove();return false;}return true;});
+}
+
+/* ---- DOM + loop ---- */
+function ensureEl(e){
+  if(e.el)return;
+  const d=document.createElement('div');
+  d.className='av '+e.char.rarity+(e.kind==='me'?' me':'');
+  let fx='';
+  if(e.char.rarity==='legend') fx='<div class="ring"></div>'
+    +'<div class="spark" style="top:5px;right:3px"></div>'
+    +'<div class="spark" style="top:20px;left:1px;animation-delay:.5s"></div>'
+    +'<div class="spark" style="top:3px;left:13px;animation-delay:.95s"></div>';
+  else if(e.char.rarity==='rare') fx='<div class="spark" style="top:7px;right:5px"></div>'
+    +'<div class="spark" style="top:22px;left:3px;animation-delay:.6s"></div>';
+  d.innerHTML=`<div class="tag"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${esc(e.nick)}</div>`
+    +fx+`<div class="cbox">${buildChar(e.char)}</div>`;
+  $('#avatars').appendChild(d); e.el=d;
+}
+let last=0;
+function loop(t){
+  const dt=Math.min(.05,(t-last)/1000||0); last=t; const now=Date.now();
+  let o=0,x=0;
+  for(const e of entities){
+    if(e.kind==='bot')botAI(e,now);
+    const dx=e.tx-e.x, dy=e.ty-e.y, dist=Math.hypot(dx,dy);
+    const moving=dist>2;
+    if(moving){const s=Math.min(dist,SPEED*dt);e.x+=dx/dist*s;e.y+=dy/dist*s;if(Math.abs(dx)>1)e.face=dx<0?-1:1;}
+    if(inPad(e.x,e.y,PAD_O))o++; else if(inPad(e.x,e.y,PAD_X))x++;
+    const el=e.el; el.style.left=e.x+'px'; el.style.top=e.y+'px'; el.style.zIndex=Math.round(e.y);
+    el.classList.toggle('moving',moving); el.classList.toggle('left',e.face<0);
+  }
+  // camera follows self, clamped to world bounds
+  let tcx=selfE.x-view.w/2, tcy=selfE.y-view.h/2;
+  tcx=Math.max(0,Math.min(WORLD.w-view.w,tcx));
+  tcy=Math.max(0,Math.min(WORLD.h-view.h,tcy));
+  cam.x+=(tcx-cam.x)*Math.min(1,dt*8); cam.y+=(tcy-cam.y)*Math.min(1,dt*8);
+  $('#world').style.transform=`translate(${-cam.x}px,${-cam.y}px)`;
+
+  const cO=$('#cO'),cX=$('#cX');
+  if(cO&&cO.textContent!=String(o))cO.textContent=o;
+  if(cX&&cX.textContent!=String(x))cX.textContent=x;
+  drawMini();
+  requestAnimationFrame(loop);
+}
+function drawMini(){
+  const cv=$('#miniC'); if(!cv)return; const ctx=cv.getContext('2d');
+  const sx=cv.width/WORLD.w, sy=cv.height/WORLD.h;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='rgba(60,120,80,.5)'; ctx.fillRect(0,0,cv.width,cv.height);
+  // booths
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  BOOTHS.forEach(b=>ctx.fillRect(b.x*sx,b.y*sy,b.w*sx,b.h*sy));
+  // pads
+  ctx.fillStyle='rgba(63,214,196,.8)'; ctx.fillRect((PAD_O.cx-PAD_O.w/2)*sx,(PAD_O.cy-PAD_O.h/2)*sy,PAD_O.w*sx,PAD_O.h*sy);
+  ctx.fillStyle='rgba(255,122,138,.8)'; ctx.fillRect((PAD_X.cx-PAD_X.w/2)*sx,(PAD_X.cy-PAD_X.h/2)*sy,PAD_X.w*sx,PAD_X.h*sy);
+  // viewport rect
+  ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1;
+  ctx.strokeRect(cam.x*sx,cam.y*sy,view.w*sx,view.h*sy);
+  // entities
+  for(const e of entities){ ctx.fillStyle = e.kind==='me'?'#ff7a59':(GENC[e.gen]||'#fff');
+    const r=e.kind==='me'?2.5:1.6; ctx.beginPath(); ctx.arc(e.x*sx,e.y*sy,r,0,7); ctx.fill(); }
+}
+</script>
