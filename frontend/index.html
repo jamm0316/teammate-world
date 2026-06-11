@@ -157,6 +157,24 @@
   @keyframes twk{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1)}}
   .av.me .tag{background:rgba(255,122,89,.85)}
 
+  /* gifts (3D) */
+  .g3wrap{position:relative;width:150px;height:150px;margin:10px auto 4px;display:flex;align-items:center;justify-content:center;
+    font-size:64px;background:radial-gradient(circle at 50% 32%,#322b4c,#1b1730);border:1px solid #3a3352;border-radius:16px;overflow:hidden}
+  .g3wrap canvas{position:absolute;inset:0;width:100%;height:100%}
+  .g3wrap.sm{width:92px;height:92px;font-size:42px;margin:0;flex:none;border-radius:12px}
+  #giftBox{display:none;margin-top:16px;background:#241f37;border:1px solid #3a3352;border-radius:16px;padding:12px 12px 14px;animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+  .gtitle{font-family:var(--round);font-size:13px;color:var(--hot2)}
+  .gname{font-family:var(--round);font-size:17px;margin-top:4px}
+  .gstory{font-size:12px;color:var(--mut);line-height:1.55;margin-top:5px;padding:0 6px}
+  .gtoggle{margin-top:14px;background:#241f37;border:1.5px solid #3a3352;border-radius:14px;padding:12px;cursor:pointer;text-align:left;transition:.15s}
+  .gtoggle.on{border-color:var(--hot2);background:#2b2340}
+  .gtoggle.off{opacity:.55;cursor:default;font-family:var(--round);font-size:13px}
+  .gtoggle .gt-head{font-family:var(--round);font-size:14px}
+  .gtoggle .gt-story{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.5}
+  .ngift{display:flex;gap:10px;align-items:center;margin-top:9px;background:#1f1a31;border:1px dashed #4a4168;border-radius:10px;padding:8px}
+  .ngift-t{font-family:var(--round);font-size:13px}
+  .ngift-t span{font-family:var(--body);font-size:11px;color:var(--mut);line-height:1.45;display:block;margin-top:3px}
+
   /* lockers (기수 교류존) */
   .locker{position:absolute;width:90px;height:116px;border-radius:10px;border:2px solid rgba(0,0,0,.28);cursor:pointer;
     display:flex;flex-direction:column;align-items:center;box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.25);
@@ -238,6 +256,21 @@
 /* ===================== config ===================== */
 const GEN={1:'1기',2:'2기',3:'3기',4:'4기'}, GENC={1:'#ff6b6b',2:'#ffb454',3:'#2ec4b6',4:'#8b8bff'};
 const ROLE={mentor:'멘토',mentee:'멘티'};
+// welcome gifts (3D assets) — assigned once at character creation
+const GIFTS={
+  chicken:{id:'chicken',name:'닭',emoji:'🐓',
+    story:'닭의 빨간 볏은 예부터 \'벼슬\'이라 불렸어요. 출세와 야망의 상징! 모임에서 가장 야망이 넘치는 사람에게 선물하세요.',
+    obj:'assets/gifts/chicken/Chicken_01.obj',mtl:'assets/gifts/chicken/Chicken_01.mtl'},
+};
+const GIFT_IDS=Object.keys(GIFTS);
+const randGift=()=>GIFT_IDS[Math.floor(Math.random()*GIFT_IDS.length)];
+// mounts a rotating 3D preview onto a canvas; falls back to the emoji behind it
+function mountGift(canvas,gid){
+  const g=GIFTS[gid];
+  if(!g||!window.Gift3D){if(canvas)canvas.style.display='none';return;}
+  window.Gift3D.mount(canvas,g).then(ok=>{if(!ok)canvas.style.display='none';});
+}
+const giftWrap=(gid,sm)=>{const g=GIFTS[gid];return g?`<div class="g3wrap${sm?' sm':''}"><span>${g.emoji}</span><canvas class="g3" width="150" height="150" data-g="${g.id}"></canvas></div>`:'';};
 const QUESTIONS=[
   '나는 멘토링 모임에 둘 이상 참석했다',
   '점심은 면 요리가 밥보다 좋다',
@@ -411,6 +444,7 @@ function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clea
 
 /* ===================== boot ===================== */
 (async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
+  if(me&&!me.gift){me.gift=randGift();await sset('me',me,false);} // migrate pre-gift profiles
   if(me&&me.outfit&&me.role){enterGame();} else {renderOnboard();}
   if(window.innerWidth<760) $('#rotate').classList.add('show');
 })();
@@ -447,6 +481,7 @@ function renderGacha(base){
      <div class="orb" id="orb"><div class="burst" id="burst"></div><div id="orbInner" style="font-size:64px">🎁</div></div>
      <div class="rtag" id="rtag" style="visibility:hidden">.</div>
      <div class="rsub" id="rsub">&nbsp;</div>
+     <div id="giftBox"></div>
      <button class="cta" id="roll">뽑기!</button>
      <button class="ghost" id="enter" style="display:none">이 캐릭터로 입장하기</button>
      <button class="ghost" id="reroll" style="display:none">다시 뽑기 (데모용)</button>
@@ -456,16 +491,21 @@ function renderGacha(base){
   function doRoll(){
     $('#roll').style.display='none';
     const orb=$('#orb');orb.classList.add('shake');
-    $('#rtag').style.visibility='hidden';$('#rsub').innerHTML='&nbsp;';$('#enter').style.display='none';$('#reroll').style.display='none';
+    $('#rtag').style.visibility='hidden';$('#rsub').innerHTML='&nbsp;';$('#enter').style.display='none';$('#reroll').style.display='none';$('#giftBox').style.display='none';
     setTimeout(()=>{
       orb.classList.remove('shake');
-      cur={...base,...rollChar(base.gender),id:me?.id||uid()};
+      cur={...base,...rollChar(base.gender),id:me?.id||uid(),gift:cur?.gift||randGift()}; // gift stays fixed across rerolls
       const R=RARITY[cur.rarity];
       $('#orbInner').outerHTML=`<div id="orbInner" class="reveal" style="width:130px;height:130px">${buildChar(cur)}</div>`;
       if(cur.rarity!=='basic'){const b=$('#burst');b.classList.add('on');setTimeout(()=>b.classList.remove('on'),650);}
       const t=$('#rtag');t.textContent=R.label;t.className='rtag '+cur.rarity;t.style.visibility='visible';
       $('#rsub').textContent=R.flavor;
       $('#enter').style.display='block';$('#reroll').style.display='block';
+      const g=GIFTS[cur.gift];
+      if(g){const gb=$('#giftBox');
+        gb.innerHTML=`<div class="gtitle">🎁 웰컴 선물이 함께 도착했어요</div>${giftWrap(cur.gift)}
+          <div class="gname">${g.emoji} ${g.name}</div><div class="gstory">${g.story}</div>`;
+        gb.style.display='block'; mountGift(gb.querySelector('.g3'),cur.gift);}
       if(cur.rarity==='legend')toast('🎉 레전드 등장!');
     },650);
   }
@@ -579,6 +619,7 @@ function openLocker(gen){
     <input class="field" id="noteTo" maxlength="10" placeholder="받는 사람 이름">
     <h2>쪽지 내용</h2>
     <textarea class="field" id="noteTxt" maxlength="200" placeholder="따뜻한 한마디를 남겨보세요 ✉️"></textarea>
+    <div class="gtoggle" id="gToggle"></div>
     <button class="cta" id="noteSend" style="margin-top:16px">쪽지 남기기 ✉️</button>
   </div>`;
   document.body.appendChild(bg);
@@ -586,6 +627,18 @@ function openLocker(gen){
   bg.onclick=e=>{if(e.target===bg)close();};
   bg.querySelector('#mClose').onclick=close;
   bg.querySelectorAll('.pick[data-r]').forEach(el=>el.onclick=()=>{lockerRole=el.dataset.r;paint();});
+  // gift attach toggle (one gift per person — consumed when sent)
+  const myG=GIFTS[me.gift]; let attachGift=false;
+  const gt=bg.querySelector('#gToggle');
+  function paintGift(){
+    if(!myG){gt.style.display='none';return;}
+    if(me.giftSent){gt.className='gtoggle off';gt.innerHTML=`🎁 내 선물(${myG.emoji} ${myG.name})은 이미 누군가에게 보냈어요`;return;}
+    gt.className='gtoggle'+(attachGift?' on':'');
+    gt.innerHTML=`<div class="gt-head">${attachGift?'✅':'⬜️'} 내 선물 함께 보내기 — ${myG.emoji} ${myG.name}</div>
+      <div class="gt-story">${myG.story}<br>※ 선물은 단 한 번만 보낼 수 있어요</div>`;
+  }
+  gt.onclick=()=>{if(!myG||me.giftSent)return;attachGift=!attachGift;paintGift();};
+  paintGift();
   async function paint(){
     bg.querySelectorAll('.pick[data-r]').forEach(el=>el.classList.toggle('on',el.dataset.r===lockerRole));
     // quick-pick chips: people of this gen & selected role currently in the world
@@ -599,18 +652,24 @@ function openLocker(gen){
     const list=bg.querySelector('#noteList'); list.innerHTML='<div class="empty">불러오는 중...</div>';
     const notes=(await loadNotes(gen)).filter(n=>n.toRole===lockerRole);
     list.innerHTML=notes.length
-      ? notes.map(n=>`<div class="note"><div class="to">To. ${esc(n.toName)} (${GEN[gen]} ${ROLE[n.toRole]})</div>
+      ? notes.map(n=>{const g=GIFTS[n.gift];
+          return `<div class="note"><div class="to">To. ${esc(n.toName)} (${GEN[gen]} ${ROLE[n.toRole]})</div>
           <div class="txt">${esc(n.text)}</div>
-          <div class="from">From. ${esc(n.from)} · ${GEN[n.fromGen]||''} ${ROLE[n.fromRole]||''}</div></div>`).join('')
+          ${g?`<div class="ngift">${giftWrap(g.id,true)}<div class="ngift-t">🎁 ${g.name} 도착!<span>${g.story}</span></div></div>`:''}
+          <div class="from">From. ${esc(n.from)} · ${GEN[n.fromGen]||''} ${ROLE[n.fromRole]||''}</div></div>`;}).join('')
       : `<div class="empty">아직 ${ROLE[lockerRole]}에게 온 쪽지가 없어요</div>`;
+    list.querySelectorAll('canvas.g3').forEach(c=>mountGift(c,c.dataset.g));
   }
   bg.querySelector('#noteSend').onclick=async()=>{
     const toName=bg.querySelector('#noteTo').value.trim(), text=bg.querySelector('#noteTxt').value.trim();
     if(!toName){toast('받는 사람을 입력해주세요');return;}
     if(!text){toast('쪽지 내용을 입력해주세요');return;}
-    await sset(`note:${gen}:${uid()}`,{toRole:lockerRole,toName,from:me.nick,fromGen:me.gen,fromRole:me.role,text,ts:Date.now()},true);
+    const withGift=attachGift;
+    await sset(`note:${gen}:${uid()}`,{toRole:lockerRole,toName,from:me.nick,fromGen:me.gen,fromRole:me.role,text,ts:Date.now(),
+      ...(withGift?{gift:me.gift}:{})},true);
+    if(withGift){me.giftSent=true;await sset('me',me,false);attachGift=false;paintGift();}
     bg.querySelector('#noteTo').value=''; bg.querySelector('#noteTxt').value='';
-    toast('✉️ 쪽지를 남겼어요!'); paint(); refreshLockerBadges();
+    toast(withGift?'🎁 선물과 함께 쪽지를 남겼어요!':'✉️ 쪽지를 남겼어요!'); paint(); refreshLockerBadges();
   };
   paint();
 }
@@ -717,4 +776,74 @@ function drawMini(){
   for(const e of entities){ ctx.fillStyle = e.kind==='me'?'#ff7a59':(GENC[e.gen]||'#fff');
     const r=e.kind==='me'?2.5:1.6; ctx.beginPath(); ctx.arc(e.x*sx,e.y*sy,r,0,7); ctx.fill(); }
 }
+</script>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+/* ===================== gift 3D viewer =====================
+   One shared WebGL renderer; each gift canvas is a plain 2D canvas
+   that gets the rendered frame copied in (avoids the browser's
+   WebGL-context limit when many notes carry gifts). */
+import * as THREE from 'three';
+import {OBJLoader} from 'three/addons/loaders/OBJLoader.js';
+import {MTLLoader} from 'three/addons/loaders/MTLLoader.js';
+
+let renderer,scene,cam,pivot,inited=false;
+function init(){
+  if(inited)return; inited=true;
+  renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});
+  renderer.setSize(300,300); renderer.setPixelRatio(1);
+  scene=new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xffffff,1.2));
+  const dl=new THREE.DirectionalLight(0xffffff,1.8); dl.position.set(2,4,3); scene.add(dl);
+  cam=new THREE.PerspectiveCamera(35,1,0.1,100); cam.position.set(0,1.2,4.2); cam.lookAt(0,0.7,0);
+  pivot=new THREE.Group(); scene.add(pivot);
+}
+const cache={}; // gift id -> Promise<Object3D>
+function loadModel(g){
+  if(cache[g.id])return cache[g.id];
+  cache[g.id]=new Promise((res,rej)=>{
+    new MTLLoader().load(g.mtl,mats=>{
+      mats.preload();
+      Object.values(mats.materials).forEach(m=>{m.transparent=false;m.opacity=1;}); // guard against d=0 exports
+      const lo=new OBJLoader(); lo.setMaterials(mats);
+      lo.load(g.obj,obj=>{
+        const box=new THREE.Box3().setFromObject(obj);
+        const size=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
+        const s=1.7/Math.max(size.x,size.y,size.z);
+        obj.scale.setScalar(s);
+        obj.position.set(-c.x*s,-box.min.y*s,-c.z*s); // centered, standing on y=0
+        res(obj);
+      },undefined,rej);
+    },undefined,rej);
+  });
+  return cache[g.id];
+}
+let views=[],mountedId=null,looping=false;
+function tick(){
+  views=views.filter(v=>v.canvas.isConnected); // drop canvases removed with their modal
+  if(!views.length){looping=false;return;}
+  pivot.rotation.y+=0.018;
+  renderer.render(scene,cam);
+  for(const v of views){
+    v.ctx.clearRect(0,0,v.canvas.width,v.canvas.height);
+    v.ctx.drawImage(renderer.domElement,0,0,v.canvas.width,v.canvas.height);
+  }
+  requestAnimationFrame(tick);
+}
+window.Gift3D={
+  async mount(canvas,g){
+    try{
+      init();
+      const obj=await loadModel(g);
+      if(mountedId!==g.id){pivot.clear();pivot.add(obj);mountedId=g.id;}
+    }catch(e){return false;} // e.g. opened from file:// — emoji fallback shows instead
+    if(!canvas.isConnected)return true;
+    views.push({canvas,ctx:canvas.getContext('2d')});
+    if(!looping){looping=true;requestAnimationFrame(tick);}
+    return true;
+  }
+};
 </script>
