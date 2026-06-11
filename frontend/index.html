@@ -157,6 +157,42 @@
   @keyframes twk{0%,100%{opacity:0;transform:scale(.3)}50%{opacity:1;transform:scale(1)}}
   .av.me .tag{background:rgba(255,122,89,.85)}
 
+  /* lockers (기수 교류존) */
+  .locker{position:absolute;width:90px;height:116px;border-radius:10px;border:2px solid rgba(0,0,0,.28);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.25);
+    transition:transform .15s}
+  .locker:active{transform:scale(.94)}
+  .locker .glab{font-family:var(--round);font-size:12px;color:#15121f;background:rgba(255,255,255,.88);
+    padding:2px 9px;border-radius:12px;margin-top:8px;white-space:nowrap}
+  .locker .slot{width:46px;height:7px;background:rgba(0,0,0,.38);border-radius:3px;margin-top:10px}
+  .locker .handle{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.75);margin-top:24px;
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,.3)}
+  .locker .badge{position:absolute;top:-9px;right:-9px;min-width:22px;height:22px;border-radius:11px;
+    background:#ff5c5c;color:#fff;font-family:var(--round);font-size:12px;
+    display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+
+  /* locker modal */
+  .modalbg{position:fixed;inset:0;background:rgba(10,8,18,.6);backdrop-filter:blur(3px);z-index:70;
+    display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s ease}
+  .modal{width:min(96%,460px);max-height:88vh;overflow-y:auto;background:#1b1730;border:1px solid #3a3352;
+    border-radius:18px;padding:18px 18px 22px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .modal .mhead{display:flex;align-items:center;gap:8px;font-family:var(--round);font-size:18px}
+  .modal .mhead .x{margin-left:auto;border:none;background:#2c2640;color:var(--mut);width:30px;height:30px;
+    border-radius:10px;font-size:14px;cursor:pointer}
+  .modal h2{margin:16px 0 8px}
+  .modal textarea.field{resize:none;height:84px}
+  input,textarea{-webkit-user-select:text;user-select:text}
+  .notes{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:200px;overflow-y:auto}
+  .note{background:#241f37;border:1px solid #3a3352;border-radius:12px;padding:10px 12px}
+  .note .to{font-family:var(--round);font-size:13px;color:var(--hot2)}
+  .note .txt{font-size:14px;line-height:1.5;margin:4px 0;white-space:pre-wrap;word-break:break-word}
+  .note .from{font-size:11px;color:var(--mut);text-align:right}
+  .empty{font-size:13px;color:var(--mut);text-align:center;padding:14px 0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .chip{font-family:var(--round);font-size:12px;padding:6px 12px;border-radius:18px;background:#241f37;
+    border:1.5px solid #3a3352;color:var(--mut);cursor:pointer}
+  .chip.on{background:var(--hot);border-color:var(--hot);color:#15121f}
+
   /* rotate hint */
   #rotate{display:none;position:fixed;inset:0;background:#14111d;z-index:50;
     flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
@@ -189,7 +225,7 @@
         </div>
         <div class="board" id="board"></div>
         <div class="mini" id="mini"><canvas id="miniC" width="118" height="74"></canvas></div>
-        <div class="hint">바닥을 탭하면 그쪽으로 이동 · 부스를 돌아다녀 보세요</div>
+        <div class="hint">바닥을 탭하면 이동 · 기수 교류존 사물함에 쪽지를 남겨보세요 ✉️</div>
       </div>
     </div>
   </div>
@@ -201,6 +237,7 @@
 <script>
 /* ===================== config ===================== */
 const GEN={1:'1기',2:'2기',3:'3기',4:'4기'}, GENC={1:'#ff6b6b',2:'#ffb454',3:'#2ec4b6',4:'#8b8bff'};
+const ROLE={mentor:'멘토',mentee:'멘티'};
 const QUESTIONS=[
   '나는 멘토링 모임에 둘 이상 참석했다',
   '점심은 면 요리가 밥보다 좋다',
@@ -231,6 +268,11 @@ const BOOTHS=[
 ];
 // O/X pads live in the quiz booth (world px, center-based)
 const PAD_O={cx:760, cy:210, w:230, h:150}, PAD_X={cx:1040, cy:210, w:230, h:150};
+// gen lockers inside the 기수 교류존 booth (world px, top-left based)
+const LOCKERS=[
+  {gen:1,x:120,y:545},{gen:2,x:300,y:545},
+  {gen:3,x:120,y:725},{gen:4,x:300,y:725},
+];
 
 /* ===================== storage layer ===================== */
 const HAS=(typeof window!=='undefined'&&window.storage&&typeof window.storage.list==='function');
@@ -369,19 +411,21 @@ function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clea
 
 /* ===================== boot ===================== */
 (async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
-  if(me&&me.outfit){enterGame();} else {renderOnboard();}
+  if(me&&me.outfit&&me.role){enterGame();} else {renderOnboard();}
   if(window.innerWidth<760) $('#rotate').classList.add('show');
 })();
 
 /* ===================== onboarding ===================== */
 function renderOnboard(){
-  let st={nick:'',gen:null,gender:null};
+  let st={nick:'',gen:null,gender:null,role:null};
   $('#screen').innerHTML=`
    <div class="card">
      <div class="logo">팀메이트<br>월드<small>1~4기 다같이, 손 안에서 — POC</small></div>
      <h2>닉네임</h2><input class="field" id="nick" maxlength="10" placeholder="예: 재명">
      <h2>나의 기수</h2>
      <div class="grid4">${[1,2,3,4].map(g=>`<div class="pick" data-g="${g}" data-k="gen" data-v="${g}">${g}기</div>`).join('')}</div>
+     <h2>나는 멘토? 멘티?</h2>
+     <div class="grid2"><div class="pick" data-k="role" data-v="mentor">🧑‍🏫 멘토</div><div class="pick" data-k="role" data-v="mentee">🧑‍🎓 멘티</div></div>
      <h2>성별 (캐릭터 외형에 반영돼요)</h2>
      <div class="grid2"><div class="pick" data-k="gender" data-v="M">남자</div><div class="pick" data-k="gender" data-v="F">여자</div></div>
      <button class="cta" id="go" disabled>캐릭터 뽑으러 가기 →</button>
@@ -390,8 +434,8 @@ function renderOnboard(){
   document.querySelectorAll('.pick').forEach(el=>el.onclick=()=>{
     const k=el.dataset.k;document.querySelectorAll(`.pick[data-k="${k}"]`).forEach(x=>x.classList.remove('on'));
     el.classList.add('on');st[k]=el.dataset.v;chk();});
-  function chk(){$('#go').disabled=!(st.nick.trim()&&st.gen&&st.gender);}
-  $('#go').onclick=()=>renderGacha({nick:st.nick.trim(),gen:+st.gen,gender:st.gender});
+  function chk(){$('#go').disabled=!(st.nick.trim()&&st.gen&&st.gender&&st.role);}
+  $('#go').onclick=()=>renderGacha({nick:st.nick.trim(),gen:+st.gen,gender:st.gender,role:st.role});
 }
 
 /* ===================== gacha ===================== */
@@ -448,12 +492,13 @@ function enterGame(){
 
   // spawn in the central plaza
   const px=BOOTHS[0].x+BOOTHS[0].w/2, py=BOOTHS[0].y+BOOTHS[0].h/2;
-  selfE={id:me.id,kind:'me',nick:me.nick,gen:me.gen,char:me,x:px,y:py,tx:px,ty:py,face:1};
+  selfE={id:me.id,kind:'me',nick:me.nick,gen:me.gen,role:me.role,char:me,x:px,y:py,tx:px,ty:py,face:1};
   entities=[selfE]; ensureEl(selfE);
   cam.x=selfE.x-view.w/2; cam.y=selfE.y-view.h/2;
   spawnBots();
   loadQ();
-  setInterval(pushSelf,1500); setInterval(pollRemote,1500);
+  refreshLockerBadges();
+  setInterval(pushSelf,1500); setInterval(pollRemote,1500); setInterval(refreshLockerBadges,8000);
   requestAnimationFrame(loop);
 }
 async function loadQ(){const v=await sget('quiz:idx',true);if(v!=null){qidx=Math.max(0,Math.min(QUESTIONS.length-1,+v));buildBoard();}}
@@ -471,6 +516,11 @@ function buildGround(){
      <circle cx="24" cy="22" r="18" fill="#3f8a59"/><circle cx="14" cy="28" r="11" fill="#347a4c"/><circle cx="34" cy="28" r="11" fill="#347a4c"/></svg></div>`);
   const bushes=[[700,820],[1000,860],[300,300],[1500,480],[840,640]];
   bushes.forEach(([x,y])=>html+=`<div class="bush" style="left:${x}px;top:${y}px;width:64px;height:44px;transform:translate(-50%,-50%)"></div>`);
+  // gen lockers in the 기수 교류존
+  LOCKERS.forEach(l=>{ html+=`<div class="locker" data-gen="${l.gen}"
+     style="left:${l.x}px;top:${l.y}px;background:linear-gradient(180deg,${GENC[l.gen]},${shade(GENC[l.gen],-44)})">
+     <div class="glab">${GEN[l.gen]} 사물함</div><div class="slot"></div><div class="handle"></div>
+     <div class="badge" id="lkb${l.gen}" style="display:none">0</div></div>`; });
   // O/X pads (world px)
   g.innerHTML=html
    +`<div class="pad O" style="left:${PAD_O.cx}px;top:${PAD_O.cy}px;width:${PAD_O.w}px;height:${PAD_O.h}px"><span class="lab">YES</span>O</div>`
@@ -496,11 +546,78 @@ function inPad(x,y,p){return x>=p.cx-p.w/2&&x<=p.cx+p.w/2&&y>=p.cy-p.h/2&&y<=p.c
 function onTap(e){
   // ignore taps on overlay UI (scoreboard, minimap, hint, buttons) — only floor taps move the character
   if(e.target.closest('.btn, .board, .mini, .hint'))return;
+  const lk=e.target.closest('.locker');
+  if(lk){openLocker(+lk.dataset.gen);return;}
   const r=$('#stage').getBoundingClientRect();
   // screen point -> world point (add camera offset)
   let wx=(e.clientX-r.left)+cam.x, wy=(e.clientY-r.top)+cam.y;
   selfE.tx=Math.max(24,Math.min(WORLD.w-24,wx));
   selfE.ty=Math.max(40,Math.min(WORLD.h-12,wy));
+}
+
+/* ---- gen lockers (쪽지) ---- */
+let lockerRole='mentor';
+async function loadNotes(gen){
+  const keys=await slist(`note:${gen}:`,true); const notes=[];
+  for(const k of keys){ const v=await sget(k,true); if(!v)continue;
+    try{notes.push(JSON.parse(v));}catch(e){} }
+  return notes.sort((a,b)=>b.ts-a.ts);
+}
+function openLocker(gen){
+  lockerRole=me.role==='mentor'?'mentee':'mentor'; // default: write to the other side
+  const bg=document.createElement('div'); bg.className='modalbg'; bg.id='mbg';
+  bg.innerHTML=`<div class="modal">
+    <div class="mhead">🗄 <span style="color:${GENC[gen]}">${GEN[gen]}</span> 사물함
+      <button class="x" id="mClose">✕</button></div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="pick" data-r="mentor">🧑‍🏫 멘토에게</div>
+      <div class="pick" data-r="mentee">🧑‍🎓 멘티에게</div>
+    </div>
+    <div class="notes" id="noteList"><div class="empty">불러오는 중...</div></div>
+    <h2>받는 사람</h2>
+    <div class="chips" id="chips"></div>
+    <input class="field" id="noteTo" maxlength="10" placeholder="받는 사람 이름">
+    <h2>쪽지 내용</h2>
+    <textarea class="field" id="noteTxt" maxlength="200" placeholder="따뜻한 한마디를 남겨보세요 ✉️"></textarea>
+    <button class="cta" id="noteSend" style="margin-top:16px">쪽지 남기기 ✉️</button>
+  </div>`;
+  document.body.appendChild(bg);
+  const close=()=>bg.remove();
+  bg.onclick=e=>{if(e.target===bg)close();};
+  bg.querySelector('#mClose').onclick=close;
+  bg.querySelectorAll('.pick[data-r]').forEach(el=>el.onclick=()=>{lockerRole=el.dataset.r;paint();});
+  async function paint(){
+    bg.querySelectorAll('.pick[data-r]').forEach(el=>el.classList.toggle('on',el.dataset.r===lockerRole));
+    // quick-pick chips: people of this gen & selected role currently in the world
+    const names=[...new Set(entities.filter(e=>e.gen===gen&&(e.role||e.char.role)===lockerRole&&e.kind!=='me').map(e=>e.nick))];
+    bg.querySelector('#chips').innerHTML=names.length
+      ? names.map(n=>`<div class="chip">${esc(n)}</div>`).join('')
+      : `<div class="chip" style="cursor:default">지금 월드에 ${GEN[gen]} ${ROLE[lockerRole]}가 없어요 — 직접 입력하세요</div>`;
+    if(names.length)bg.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{
+      bg.querySelector('#noteTo').value=c.textContent;
+      bg.querySelectorAll('#chips .chip').forEach(x=>x.classList.toggle('on',x===c));});
+    const list=bg.querySelector('#noteList'); list.innerHTML='<div class="empty">불러오는 중...</div>';
+    const notes=(await loadNotes(gen)).filter(n=>n.toRole===lockerRole);
+    list.innerHTML=notes.length
+      ? notes.map(n=>`<div class="note"><div class="to">To. ${esc(n.toName)} (${GEN[gen]} ${ROLE[n.toRole]})</div>
+          <div class="txt">${esc(n.text)}</div>
+          <div class="from">From. ${esc(n.from)} · ${GEN[n.fromGen]||''} ${ROLE[n.fromRole]||''}</div></div>`).join('')
+      : `<div class="empty">아직 ${ROLE[lockerRole]}에게 온 쪽지가 없어요</div>`;
+  }
+  bg.querySelector('#noteSend').onclick=async()=>{
+    const toName=bg.querySelector('#noteTo').value.trim(), text=bg.querySelector('#noteTxt').value.trim();
+    if(!toName){toast('받는 사람을 입력해주세요');return;}
+    if(!text){toast('쪽지 내용을 입력해주세요');return;}
+    await sset(`note:${gen}:${uid()}`,{toRole:lockerRole,toName,from:me.nick,fromGen:me.gen,fromRole:me.role,text,ts:Date.now()},true);
+    bg.querySelector('#noteTo').value=''; bg.querySelector('#noteTxt').value='';
+    toast('✉️ 쪽지를 남겼어요!'); paint(); refreshLockerBadges();
+  };
+  paint();
+}
+async function refreshLockerBadges(){
+  for(const l of LOCKERS){ const keys=await slist(`note:${l.gen}:`,true);
+    const el=$('#lkb'+l.gen); if(!el)continue;
+    el.style.display=keys.length?'flex':'none'; el.textContent=keys.length>99?'99+':keys.length; }
 }
 
 /* ---- bots ---- */
@@ -511,6 +628,7 @@ function spawnBots(){
   for(let i=0;i<n;i++){
     const gender=Math.random()<.5?'M':'F';
     const b={id:'bot'+i,kind:'bot',nick:BOT_NICKS[i%BOT_NICKS.length],gen:1+Math.floor(Math.random()*4),
+      role:Math.random()<.4?'mentor':'mentee',
       char:{gender,...rollChar(gender)},x:200+Math.random()*(WORLD.w-400),y:150+Math.random()*(WORLD.h-300),face:1,nextAt:0};
     b.tx=b.x;b.ty=b.y; entities.push(b); ensureEl(b);
   }
@@ -550,7 +668,8 @@ function ensureEl(e){
     +'<div class="spark" style="top:3px;left:13px;animation-delay:.95s"></div>';
   else if(e.char.rarity==='rare') fx='<div class="spark" style="top:7px;right:5px"></div>'
     +'<div class="spark" style="top:22px;left:3px;animation-delay:.6s"></div>';
-  d.innerHTML=`<div class="tag"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${esc(e.nick)}</div>`
+  const role=e.role||e.char.role;
+  d.innerHTML=`<div class="tag"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div>`
     +fx+`<div class="cbox">${buildChar(e.char)}</div>`;
   $('#avatars').appendChild(d); e.el=d;
 }
