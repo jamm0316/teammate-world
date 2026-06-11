@@ -17,7 +17,7 @@
   html,body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--body);
     background:radial-gradient(120% 90% at 80% -10%,rgba(255,122,89,.14),transparent 55%),
                radial-gradient(120% 90% at -10% 0%,rgba(139,139,255,.14),transparent 55%),#14111d}
-  .app{max-width:980px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  .app{max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
 
   /* ============ ONBOARD / GACHA (narrow card) ============ */
   .card{max-width:420px;margin:auto;padding:30px 24px;width:100%;animation:fade .45s ease}
@@ -64,9 +64,9 @@
   .burst.on{animation:burst .6s ease forwards}
   @keyframes burst{from{box-shadow:0 0 0 0 rgba(255,207,58,.55)}to{box-shadow:0 0 0 60px rgba(255,207,58,0)}}
 
-  /* ============ GAME WORLD (landscape) ============ */
+  /* ============ GAME WORLD (portrait) ============ */
   #game{display:none;flex:1;flex-direction:column;animation:fade .4s ease}
-  .hud{display:flex;align-items:center;gap:8px;padding:10px 14px}
+  .hud{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 14px}
   .hud .mark{font-family:var(--display);font-size:18px;background:linear-gradient(100deg,var(--hot),var(--hot2));-webkit-background-clip:text;background-clip:text;color:transparent}
   .hud .right{margin-left:auto;display:flex;gap:8px}
   .btn{border:1.5px solid #3a3352;background:#241f37;color:var(--ink);border-radius:12px;
@@ -75,8 +75,8 @@
   .btn.hot{background:linear-gradient(100deg,var(--hot),var(--hot2));color:#221206;border:none}
   .btn.off{opacity:.5}
 
-  .stage-wrap{padding:0 12px 14px}
-  .stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;cursor:pointer;
+  .stage-wrap{flex:1;display:flex;padding:0 12px 14px;min-height:0}
+  .stage{position:relative;flex:1;width:100%;border-radius:18px;overflow:hidden;cursor:pointer;
     background:linear-gradient(180deg,#2f6a4a,#2a5c42);
     box-shadow:0 18px 50px -12px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.4);touch-action:none}
   /* the scrolling world (larger than the viewport) */
@@ -127,11 +127,11 @@
   .board.collapsed .mini-q{display:block}
 
   /* minimap */
-  .mini{position:absolute;right:10px;bottom:10px;width:118px;border:1px solid rgba(255,255,255,.25);
+  .mini{position:absolute;right:10px;bottom:10px;width:72px;border:1px solid rgba(255,255,255,.25);
     border-radius:8px;overflow:hidden;z-index:8;background:rgba(20,30,24,.7)}
   .mini canvas{display:block;width:100%}
 
-  .hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:7;
+  .hint{position:absolute;left:10px;bottom:10px;z-index:7;max-width:calc(100% - 102px);
     font-family:var(--round);font-size:12px;color:#fff;background:rgba(0,0,0,.34);padding:6px 14px;border-radius:20px}
 
   /* avatars live INSIDE .world */
@@ -211,13 +211,6 @@
     border:1.5px solid #3a3352;color:var(--mut);cursor:pointer}
   .chip.on{background:var(--hot);border-color:var(--hot);color:#15121f}
 
-  /* rotate hint */
-  #rotate{display:none;position:fixed;inset:0;background:#14111d;z-index:50;
-    flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
-  #rotate .ic{font-size:54px;animation:spin 2s ease-in-out infinite}
-  @keyframes spin{0%,100%{transform:rotate(0)}50%{transform:rotate(90deg)}}
-  @media (max-width:760px) and (orientation:portrait){ #rotate.show{display:flex} }
-
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;
     background:var(--ink);color:#15121f;font-family:var(--round);font-size:14px;padding:10px 18px;border-radius:30px;z-index:60;transition:.25s;pointer-events:none}
@@ -242,14 +235,12 @@
           <div id="avatars"></div>
         </div>
         <div class="board" id="board"></div>
-        <div class="mini" id="mini"><canvas id="miniC" width="118" height="74"></canvas></div>
+        <div class="mini" id="mini"><canvas id="miniC" width="72" height="118"></canvas></div>
         <div class="hint">바닥을 탭하면 이동 · 기수 교류존 사물함에 쪽지를 남겨보세요 ✉️</div>
       </div>
     </div>
   </div>
 </div>
-<div id="rotate"><div class="ic">📱</div><div style="font-family:var(--round)">기기를 가로로 돌려주세요</div>
-  <button class="ghost" style="max-width:200px" onclick="document.getElementById('rotate').classList.remove('show')">그냥 볼게요</button></div>
 <div class="pop" id="pop"></div>
 
 <script>
@@ -288,23 +279,23 @@ const HAIRC=['#ff9ecb','#7fe0c8','#b8a8ff','#dcdcf0','#ffd98a','#ff7a6b','#6b4a3
 const EYEC=['#3aa0ff','#38b48b','#ff7aa8','#8a5a2b','#7c5cff','#16b8a6'];
 const SKIN=['#ffe0c4','#ffd2ad','#f0bd95'];
 const STYLE={ M:['short','spiky','sweep'], F:['long','twin','bun','bob','wavy'] };
-// ---- world (larger than viewport) in world pixels ----
-const WORLD={w:1800,h:1100};
+// ---- world (larger than viewport, portrait) in world pixels ----
+const WORLD={w:1100,h:1800};
 const SPEED=190; // px per second
-// booth zones
+// booth zones (stacked vertically for portrait play)
 const BOOTHS=[
-  {id:'plaza', name:'🏛 중앙 광장',     x:650, y:430, w:500, h:320, tint:true},
-  {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:560, y:60,  w:680, h:300},
-  {id:'net',   name:'🤝 기수 교류존',   x:80,  y:470, w:430, h:430},
-  {id:'photo', name:'📸 포토 / 기록존',  x:1240,y:120, w:470, h:360},
-  {id:'rest',  name:'☕ 휴식존',         x:1280,y:620, w:430, h:380},
+  {id:'plaza', name:'🏛 중앙 광장',     x:300, y:790, w:500, h:320, tint:true},
+  {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:210, y:70,  w:680, h:300},
+  {id:'net',   name:'🤝 기수 교류존',   x:80,  y:1230,w:430, h:430},
+  {id:'photo', name:'📸 포토 / 기록존',  x:90,  y:430, w:460, h:300},
+  {id:'rest',  name:'☕ 휴식존',         x:600, y:1250,w:430, h:380},
 ];
 // O/X pads live in the quiz booth (world px, center-based)
-const PAD_O={cx:760, cy:210, w:230, h:150}, PAD_X={cx:1040, cy:210, w:230, h:150};
+const PAD_O={cx:400, cy:220, w:230, h:150}, PAD_X={cx:700, cy:220, w:230, h:150};
 // gen lockers inside the 기수 교류존 booth (world px, top-left based)
 const LOCKERS=[
-  {gen:1,x:120,y:545},{gen:2,x:300,y:545},
-  {gen:3,x:120,y:725},{gen:4,x:300,y:725},
+  {gen:1,x:120,y:1305},{gen:2,x:300,y:1305},
+  {gen:3,x:120,y:1485},{gen:4,x:300,y:1485},
 ];
 
 /* ===================== storage layer ===================== */
@@ -446,7 +437,6 @@ function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clea
 (async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
   if(me&&!me.gift){me.gift=randGift();await sset('me',me,false);} // migrate pre-gift profiles
   if(me&&me.outfit&&me.role){enterGame();} else {renderOnboard();}
-  if(window.innerWidth<760) $('#rotate').classList.add('show');
 })();
 
 /* ===================== onboarding ===================== */
@@ -550,11 +540,11 @@ function buildGround(){
   BOOTHS.forEach(b=>{ html+=`<div class="booth ${b.tint?'tinted':''}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px">
     <div class="name">${b.name}</div></div>`; });
   // decorative trees/bushes scattered around edges (world px)
-  const trees=[[40,260],[120,940],[1720,200],[1750,860],[520,30],[1180,40],[60,60],[900,1040],[1640,1040]];
+  const trees=[[40,260],[120,940],[1020,200],[1050,860],[520,30],[60,60],[900,1740],[160,1740],[1040,1500]];
   trees.forEach(([x,y])=>html+=`<div class="tree" style="left:${x}px;top:${y}px;transform:translate(-50%,-90%)">
      <svg viewBox="0 0 48 48"><rect x="21" y="34" width="6" height="14" rx="2" fill="#6b4a2e"/>
      <circle cx="24" cy="22" r="18" fill="#3f8a59"/><circle cx="14" cy="28" r="11" fill="#347a4c"/><circle cx="34" cy="28" r="11" fill="#347a4c"/></svg></div>`);
-  const bushes=[[700,820],[1000,860],[300,300],[1500,480],[840,640]];
+  const bushes=[[700,1180],[1000,980],[700,400],[850,560],[540,1160]];
   bushes.forEach(([x,y])=>html+=`<div class="bush" style="left:${x}px;top:${y}px;width:64px;height:44px;transform:translate(-50%,-50%)"></div>`);
   // gen lockers in the 기수 교류존
   LOCKERS.forEach(l=>{ html+=`<div class="locker" data-gen="${l.gen}"
