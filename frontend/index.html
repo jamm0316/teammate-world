@@ -1,5 +1,12 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14111d">
+<link rel="manifest" href="manifest.json">
+<!-- iOS -->
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="팀메이트">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;900&family=Jua&display=swap" rel="stylesheet">
@@ -14,10 +21,11 @@
     --display:'Black Han Sans',sans-serif; --round:'Jua',sans-serif; --body:'Gothic A1',sans-serif;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-  html,body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--body);
+  html,body{margin:0;min-height:100dvh;color:var(--ink);font-family:var(--body);
     background:radial-gradient(120% 90% at 80% -10%,rgba(255,122,89,.14),transparent 55%),
                radial-gradient(120% 90% at -10% 0%,rgba(139,139,255,.14),transparent 55%),#14111d}
-  .app{max-width:980px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  .app{max-width:980px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 
   /* ============ ONBOARD / GACHA (narrow card) ============ */
   .card{max-width:420px;margin:auto;padding:30px 24px;width:100%;animation:fade .45s ease}
@@ -64,7 +72,7 @@
   .burst.on{animation:burst .6s ease forwards}
   @keyframes burst{from{box-shadow:0 0 0 0 rgba(255,207,58,.55)}to{box-shadow:0 0 0 60px rgba(255,207,58,0)}}
 
-  /* ============ GAME WORLD (landscape) ============ */
+  /* ============ GAME WORLD (portrait, fills viewport) ============ */
   #game{display:none;flex:1;flex-direction:column;animation:fade .4s ease}
   .hud{display:flex;align-items:center;gap:8px;padding:10px 14px}
   .hud .mark{font-family:var(--display);font-size:18px;background:linear-gradient(100deg,var(--hot),var(--hot2));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -75,8 +83,8 @@
   .btn.hot{background:linear-gradient(100deg,var(--hot),var(--hot2));color:#221206;border:none}
   .btn.off{opacity:.5}
 
-  .stage-wrap{padding:0 12px 14px}
-  .stage{position:relative;width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;cursor:pointer;
+  .stage-wrap{padding:0 12px 14px;flex:1;display:flex;flex-direction:column;min-height:0}
+  .stage{position:relative;width:100%;flex:1;min-height:0;border-radius:18px;overflow:hidden;cursor:pointer;
     background:linear-gradient(180deg,#2f6a4a,#2a5c42);
     box-shadow:0 18px 50px -12px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.4);touch-action:none}
   /* the scrolling world (larger than the viewport) */
@@ -192,7 +200,7 @@
   /* locker modal */
   .modalbg{position:fixed;inset:0;background:rgba(10,8,18,.6);backdrop-filter:blur(3px);z-index:70;
     display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s ease}
-  .modal{width:min(96%,460px);max-height:88vh;overflow-y:auto;background:#1b1730;border:1px solid #3a3352;
+  .modal{width:min(96%,460px);max-height:88dvh;overflow-y:auto;background:#1b1730;border:1px solid #3a3352;
     border-radius:18px;padding:18px 18px 22px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
   .modal .mhead{display:flex;align-items:center;gap:8px;font-family:var(--round);font-size:18px}
   .modal .mhead .x{margin-left:auto;border:none;background:#2c2640;color:var(--mut);width:30px;height:30px;
@@ -211,12 +219,6 @@
     border:1.5px solid #3a3352;color:var(--mut);cursor:pointer}
   .chip.on{background:var(--hot);border-color:var(--hot);color:#15121f}
 
-  /* rotate hint */
-  #rotate{display:none;position:fixed;inset:0;background:#14111d;z-index:50;
-    flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px}
-  #rotate .ic{font-size:54px;animation:spin 2s ease-in-out infinite}
-  @keyframes spin{0%,100%{transform:rotate(0)}50%{transform:rotate(90deg)}}
-  @media (max-width:760px) and (orientation:portrait){ #rotate.show{display:flex} }
 
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;
@@ -248,8 +250,6 @@
     </div>
   </div>
 </div>
-<div id="rotate"><div class="ic">📱</div><div style="font-family:var(--round)">기기를 가로로 돌려주세요</div>
-  <button class="ghost" style="max-width:200px" onclick="document.getElementById('rotate').classList.remove('show')">그냥 볼게요</button></div>
 <div class="pop" id="pop"></div>
 
 <script>
@@ -446,7 +446,6 @@ function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clea
 (async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
   if(me&&!me.gift){me.gift=randGift();await sset('me',me,false);} // migrate pre-gift profiles
   if(me&&me.outfit&&me.role){enterGame();} else {renderOnboard();}
-  if(window.innerWidth<760) $('#rotate').classList.add('show');
 })();
 
 /* ===================== onboarding ===================== */
@@ -775,6 +774,9 @@ function drawMini(){
   // entities
   for(const e of entities){ ctx.fillStyle = e.kind==='me'?'#ff7a59':(GENC[e.gen]||'#fff');
     const r=e.kind==='me'?2.5:1.6; ctx.beginPath(); ctx.arc(e.x*sx,e.y*sy,r,0,7); ctx.fill(); }
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
 }
 </script>
 
