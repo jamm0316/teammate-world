@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'tw-v1';
+const CACHE_VERSION = 'tw-v2';
 const PRECACHE = ['./', 'manifest.json',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 
