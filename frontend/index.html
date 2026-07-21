@@ -85,25 +85,51 @@
 
   .stage-wrap{padding:0 12px 14px;flex:1;display:flex;flex-direction:column;min-height:0}
   .stage{position:relative;width:100%;flex:1;min-height:0;border-radius:18px;overflow:hidden;cursor:pointer;
-    background:linear-gradient(180deg,#2f6a4a,#2a5c42);
-    box-shadow:0 18px 50px -12px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.4);touch-action:none}
-  /* the scrolling world (larger than the viewport) */
-  .world{position:absolute;left:0;top:0;will-change:transform;
+    background:#d8c8ac;
+    box-shadow:0 18px 50px -12px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.35);touch-action:none}
+  /* the scrolling world (larger than the viewport) — indoor lounge floor */
+  .world{position:absolute;left:0;top:0;will-change:transform;transform-origin:0 0;
     background:
-      radial-gradient(80% 60% at 30% 25%, rgba(255,255,255,.05), transparent 60%),
-      linear-gradient(180deg,#3a7a55 0%, #2f6a4a 45%, #285740 100%)}
-  .grid{position:absolute;inset:0;opacity:.35;
-    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);
-    background-size:48px 48px}
-  .bush{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4f9a6a,#2f6a48);box-shadow:inset -4px -6px 10px rgba(0,0,0,.25)}
-  .tree{position:absolute;width:48px;height:48px}
+      radial-gradient(90% 50% at 50% 12%, rgba(255,255,255,.14), transparent 60%),
+      linear-gradient(180deg,#ece0ca 0%, #e2d4ba 55%, #d9cbb0 100%)}
+  .grid{position:absolute;inset:0;opacity:.55;
+    background-image:repeating-linear-gradient(0deg,rgba(120,92,54,.10) 0 1px,transparent 1px 66px),
+                     repeating-linear-gradient(90deg,rgba(120,92,54,.07) 0 1px,transparent 1px 66px)}
+  /* window wall with city view */
+  .winwall{position:absolute;left:0;top:0;width:100%;height:170px;overflow:hidden;
+    border-bottom:7px solid #c7b28a;box-shadow:inset 0 -14px 24px -10px rgba(0,0,0,.25)}
+  .winwall .sky{position:absolute;inset:0}
+  /* rugs on the floor */
+  .rug{position:absolute;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,rgba(var(--rc),.30),rgba(var(--rc),.10) 68%,transparent 78%)}
+  /* stage + screen */
+  .stageplat{position:absolute;border-radius:14px;
+    background:linear-gradient(180deg,#caa877,#b5915f);box-shadow:0 10px 22px -10px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.25)}
+  .screen{position:absolute;border-radius:10px;background:linear-gradient(180deg,#ffffff,#f0f0f6);
+    border:6px solid #2a2438;box-shadow:0 12px 26px -8px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+  .scr-logo{font-family:var(--display);font-size:34px;color:#6a4bd0;text-align:center;line-height:1.05}
+  .scr-logo span{display:block;font-family:var(--round);font-size:14px;color:#8a7bc0;margin-top:4px}
+  .banner{position:absolute;width:56px;height:96px;
+    background:linear-gradient(180deg,#8b5cf6,#6d3fd6);display:flex;align-items:center;justify-content:center;
+    font-family:var(--round);font-size:15px;color:#fff;text-align:center;line-height:1.1;
+    box-shadow:0 8px 16px -6px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% 88%,50% 100%,0 88%)}
+  .banner.uni{font-size:30px}
+  /* bar counter */
+  .barctr{position:absolute;border-radius:12px;background:linear-gradient(90deg,#6d3fd6,#8b5cf6);
+    box-shadow:0 10px 22px -10px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.2);
+    display:flex;align-items:flex-start;justify-content:center}
+  .barctr span{margin-top:10px;font-family:var(--display);font-size:15px;color:#fff;letter-spacing:2px;opacity:.85}
+  /* furniture */
+  .frn{position:absolute;transform:translate(-50%,-100%);pointer-events:none}
+  .frn svg{display:block;overflow:visible}
+  .seatmark{position:absolute;width:16px;height:9px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;
+    background:rgba(255,255,255,.4);box-shadow:0 0 8px rgba(255,255,255,.55);animation:seatp 2.2s infinite}
+  @keyframes seatp{0%,100%{opacity:.22;transform:translate(-50%,-50%) scale(.8)}50%{opacity:.7;transform:translate(-50%,-50%) scale(1.1)}}
 
-  /* booth zones */
-  .booth{position:absolute;border-radius:20px;border:2px dashed rgba(255,255,255,.22);
-    background:rgba(0,0,0,.10);display:flex;align-items:flex-start;justify-content:center}
-  .booth .name{margin-top:-13px;font-family:var(--round);font-size:13px;color:#fff;
-    background:rgba(0,0,0,.5);padding:3px 12px;border-radius:20px;white-space:nowrap}
-  .booth.tinted{background:rgba(255,255,255,.05)}
+  /* zone labels (soft, indoor) */
+  .booth{position:absolute;border:none;background:transparent;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
+  .booth .name{margin-top:6px;font-family:var(--round);font-size:13px;color:#5a4a30;
+    background:rgba(255,255,255,.55);padding:3px 12px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 
   .pad{position:absolute;transform:translate(-50%,-50%);border-radius:24px;display:flex;align-items:center;justify-content:center;
     font-family:var(--display);font-size:48px;transition:box-shadow .25s}
@@ -135,8 +161,8 @@
   .board.collapsed .mini-q{display:block}
 
   /* minimap */
-  .mini{position:absolute;right:10px;bottom:10px;width:72px;border:1px solid rgba(255,255,255,.25);
-    border-radius:8px;overflow:hidden;z-index:8;background:rgba(20,30,24,.7)}
+  .mini{position:absolute;right:10px;bottom:10px;width:72px;border:1px solid rgba(90,70,40,.4);
+    border-radius:8px;overflow:hidden;z-index:8;background:rgba(226,212,186,.85)}
   .mini canvas{display:block;width:100%}
 
   .hint{position:absolute;left:10px;bottom:10px;z-index:7;max-width:calc(100% - 102px);
@@ -153,6 +179,10 @@
   .av.left .cbox{transform:translateX(-50%) scaleX(-1)}
   .av.moving .cbox{animation:bob .4s infinite}
   @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -3px}}
+  .av.sitting .cbox{transform:translateX(-50%) translateY(9px) scaleY(.92)}
+  .av.sitting.left .cbox{transform:translateX(-50%) translateY(9px) scaleY(.92) scaleX(-1)}
+  .av.sitting .tag{background:rgba(139,139,255,.9)}
+  .av.sitting .tag .sit{font-size:10px}
   .av.rare .cbox svg{filter:drop-shadow(0 0 4px rgba(92,200,255,.95))}
   .av.legend .cbox svg{filter:drop-shadow(0 0 5px rgba(255,213,74,.95)) drop-shadow(0 0 11px rgba(255,180,40,.55))}
   .av.legend .ring{position:absolute;bottom:2px;left:50%;width:46px;height:18px;transform:translateX(-50%);
@@ -268,7 +298,7 @@
         </div>
         <div class="board" id="board"></div>
         <div class="mini" id="mini"><canvas id="miniC" width="72" height="118"></canvas></div>
-        <div class="hint">바닥을 탭하면 이동 · 기수 교류존 사물함에 쪽지를 남겨보세요 ✉️</div>
+        <div class="hint">바닥을 탭해 이동 · 소파·의자를 탭하면 앉기 💺 · 두 손가락으로 확대·축소 🔍 · 사물함에 쪽지 ✉️</div>
       </div>
     </div>
   </div>
@@ -311,24 +341,72 @@ const HAIRC=['#ff9ecb','#7fe0c8','#b8a8ff','#dcdcf0','#ffd98a','#ff7a6b','#6b4a3
 const EYEC=['#3aa0ff','#38b48b','#ff7aa8','#8a5a2b','#7c5cff','#16b8a6'];
 const SKIN=['#ffe0c4','#ffd2ad','#f0bd95'];
 const STYLE={ M:['short','spiky','sweep'], F:['long','twin','bun','bob','wavy'] };
-// ---- world (larger than viewport, portrait) in world pixels ----
+// ---- world (larger than viewport, portrait) in world pixels — indoor lounge/hall ----
 const WORLD={w:1100,h:1800};
 const SPEED=190; // px per second
-// booth zones (stacked vertically for portrait play)
+// stage screen + platform (top, mounted on the window wall)
+const SCREEN={x:360,y:40,w:380,h:118};
+const STAGE={x:250,y:182,w:600,h:120};
+const BAR={x:952,y:1170,w:120,h:470}; // bar counter (right wall)
+// zone labels (top-left based)
 const BOOTHS=[
-  {id:'plaza', name:'🏛 중앙 광장',     x:300, y:790, w:500, h:320, tint:true},
-  {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:210, y:70,  w:680, h:300},
-  {id:'net',   name:'🤝 기수 교류존',   x:80,  y:1230,w:430, h:430},
-  {id:'photo', name:'📸 포토 / 기록존',  x:90,  y:430, w:460, h:300},
-  {id:'rest',  name:'☕ 휴식존',         x:600, y:1250,w:430, h:380},
+  {id:'lounge',name:'🛋 라운지',        x:250, y:430, w:600, h:330},
+  {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:230, y:815, w:640, h:250},
+  {id:'net',   name:'🤝 기수 교류존',   x:70,  y:1150,w:430, h:520},
+  {id:'bar',   name:'🍹 바 라운지',      x:600, y:1150,w:360, h:520},
 ];
-// O/X pads live in the quiz booth (world px, center-based)
-const PAD_O={cx:400, cy:220, w:230, h:150}, PAD_X={cx:700, cy:220, w:230, h:150};
-// gen lockers inside the 기수 교류존 booth (world px, top-left based)
+// O/X pads live in the quiz zone (world px, center-based)
+const PAD_O={cx:410, cy:940, w:210, h:140}, PAD_X={cx:690, cy:940, w:210, h:140};
+// gen lockers inside the 기수 교류존 (world px, top-left based)
 const LOCKERS=[
-  {gen:1,x:120,y:1305},{gen:2,x:300,y:1305},
-  {gen:3,x:120,y:1485},{gen:4,x:300,y:1485},
+  {gen:1,x:110,y:1250},{gen:2,x:300,y:1250},
+  {gen:3,x:110,y:1450},{gen:4,x:300,y:1450},
 ];
+// area rugs (world px, center-based). c = "r,g,b"
+const RUGS=[
+  {x:550,y:640, w:380,h:170,c:'139,139,255'},
+  {x:290,y:1560,w:300,h:150,c:'46,196,182'},
+];
+// furniture — anchor = bottom-center in world px. accent tints piping/cushions.
+const FURNITURE=[
+  // stage lounge
+  {type:'armchair',x:405,y:300,face:1, accent:'#8b8bff'},
+  {type:'sofa2',   x:550,y:308,face:1, accent:'#ff6b6b'},
+  {type:'armchair',x:695,y:300,face:-1,accent:'#2ec4b6'},
+  {type:'plant',   x:300,y:250},{type:'plant',x:800,y:250},
+  // central lounge
+  {type:'sofa3',   x:550,y:560,face:1, accent:'#ffb454'},
+  {type:'table',   x:550,y:650},
+  {type:'armchair',x:415,y:660,face:1, accent:'#ff6b6b'},
+  {type:'armchair',x:685,y:660,face:-1,accent:'#8b8bff'},
+  {type:'sofa2',   x:550,y:760,face:-1,accent:'#2ec4b6'},
+  // 기수 교류존 bench
+  {type:'sofa2',   x:290,y:1660,face:1,accent:'#8b8bff'},
+  {type:'plant',   x:470,y:1230},
+  // 바 라운지 stools + lounge chair
+  {type:'stool',x:922,y:1255,face:1,accent:'#ffb454'},
+  {type:'stool',x:922,y:1350,face:1,accent:'#ff6b6b'},
+  {type:'stool',x:922,y:1445,face:1,accent:'#2ec4b6'},
+  {type:'stool',x:922,y:1540,face:1,accent:'#8b8bff'},
+  {type:'armchair',x:700,y:1600,face:-1,accent:'#ffb454'},
+  {type:'table',x:700,y:1660},
+  // corner plants
+  {type:'plant',x:95,y:230},{type:'plant',x:1010,y:230},
+  {type:'plant',x:95,y:800},{type:'plant',x:95,y:1700},
+  {type:'plant',x:1030,y:900},{type:'plant',x:560,y:1120},
+];
+// seat offsets [dx,dy] from a furniture anchor; character sits at anchor+offset
+const SEAT_OFF={
+  sofa3:[[-46,-34],[0,-34],[46,-34]],
+  sofa2:[[-28,-34],[28,-34]],
+  armchair:[[0,-32]],
+  stool:[[0,-30]],
+};
+const SEATS=[];
+FURNITURE.forEach((f,fi)=>{ (SEAT_OFF[f.type]||[]).forEach((o,si)=>{
+  SEATS.push({id:'s'+fi+'_'+si, x:f.x+o[0], y:f.y+o[1],
+    face: f.face || (o[0]<0?1:o[0]>0?-1:1)}); }); });
+const SEATBYID={}; SEATS.forEach(s=>SEATBYID[s.id]=s);
 
 /* ===================== storage layer ===================== */
 const HAS=(typeof window!=='undefined'&&window.storage&&typeof window.storage.list==='function');
@@ -537,6 +615,36 @@ function renderGacha(base){
 
 /* ===================== game world ===================== */
 let cam={x:0,y:0}, view={w:0,h:0};
+// pinch-zoom state
+let zoom=1, pinching=false, pinchStartDist=0, pinchStartZoom=1, touchCount=0;
+const ZMIN=0.45, ZMAX=2.2;
+function touchDist(t){const dx=t[0].clientX-t[1].clientX,dy=t[0].clientY-t[1].clientY;return Math.hypot(dx,dy);}
+function bindZoom(){
+  const stg=$('#stage');
+  stg.addEventListener('touchstart',(e)=>{
+    touchCount=e.touches.length;
+    if(e.touches.length===2){
+      pinching=true; pinchStartDist=touchDist(e.touches); pinchStartZoom=zoom;
+      // cancel any pending single-finger move so pinching doesn't walk the character
+      if(selfE){selfE.tx=selfE.x; selfE.ty=selfE.y; selfE.pendingSit=null;}
+    }
+  },{passive:false});
+  stg.addEventListener('touchmove',(e)=>{
+    if(pinching&&e.touches.length===2){
+      e.preventDefault();
+      const d=touchDist(e.touches);
+      if(pinchStartDist>0) zoom=Math.max(ZMIN,Math.min(ZMAX,pinchStartZoom*(d/pinchStartDist)));
+    }
+  },{passive:false});
+  const end=(e)=>{ touchCount=e.touches.length; if(e.touches.length<2){pinching=false;pinchStartDist=0;} };
+  stg.addEventListener('touchend',end); stg.addEventListener('touchcancel',end);
+  // trackpad pinch (Mac) / ctrl+wheel — desktop convenience
+  stg.addEventListener('wheel',(e)=>{
+    if(!e.ctrlKey&&!e.metaKey)return;
+    e.preventDefault();
+    zoom=Math.max(ZMIN,Math.min(ZMAX,zoom*(1-e.deltaY*0.01)));
+  },{passive:false});
+}
 function sizeStage(){
   const st=$('#stage'); const r=st.getBoundingClientRect();
   view.w=r.width; view.h=r.height;
@@ -551,7 +659,7 @@ function enterGame(){
   $('#btnNpc').onclick=()=>{botsOn=!botsOn;$('#btnNpc').textContent='NPC '+(botsOn?'ON':'OFF');$('#btnNpc').classList.toggle('off',!botsOn);if(botsOn)spawnBots();else removeBots();};
   $('#btnGames').onclick=()=>{if(window.Games)window.Games.openMenu();else toast('종목 로딩 중…');};
   $('#btnReset').onclick=async()=>{await sset('me',null,false);mem.false={};location.reload();};
-  $('#stage').addEventListener('pointerdown',onTap);
+  $('#stage').addEventListener('pointerdown',onTap); bindZoom();
 
   // spawn in the central plaza
   const px=BOOTHS[0].x+BOOTHS[0].w/2, py=BOOTHS[0].y+BOOTHS[0].h/2;
@@ -566,19 +674,71 @@ function enterGame(){
 }
 async function loadQ(){const v=await sget('quiz:idx',true);if(v!=null){qidx=Math.max(0,Math.min(QUESTIONS.length-1,+v));buildBoard();}}
 
+// ---- furniture / decor SVG ----
+function frnSVG(type,accent){
+  accent=accent||'#e6dcc8'; const sh='rgba(0,0,0,.16)';
+  switch(type){
+   case 'sofa3': return `<svg width="156" height="82" viewBox="0 0 156 82">
+     <ellipse cx="78" cy="76" rx="74" ry="6" fill="${sh}"/>
+     <rect x="18" y="14" width="120" height="30" rx="12" fill="#e6dcc8"/><rect x="18" y="14" width="120" height="8" rx="4" fill="${accent}" opacity=".55"/>
+     <rect x="10" y="26" width="136" height="40" rx="14" fill="#d8ccb4"/>
+     <rect x="4" y="28" width="20" height="40" rx="10" fill="#ccbfa4"/><rect x="132" y="28" width="20" height="40" rx="10" fill="#ccbfa4"/>
+     <rect x="28" y="36" width="30" height="18" rx="6" fill="#f0e8d6"/><rect x="63" y="36" width="30" height="18" rx="6" fill="#f0e8d6"/><rect x="98" y="36" width="30" height="18" rx="6" fill="#f0e8d6"/></svg>`;
+   case 'sofa2': return `<svg width="112" height="82" viewBox="0 0 112 82">
+     <ellipse cx="56" cy="76" rx="52" ry="6" fill="${sh}"/>
+     <rect x="16" y="14" width="80" height="30" rx="12" fill="#e6dcc8"/><rect x="16" y="14" width="80" height="8" rx="4" fill="${accent}" opacity=".55"/>
+     <rect x="8" y="26" width="96" height="40" rx="14" fill="#d8ccb4"/>
+     <rect x="3" y="28" width="18" height="40" rx="9" fill="#ccbfa4"/><rect x="91" y="28" width="18" height="40" rx="9" fill="#ccbfa4"/>
+     <rect x="24" y="36" width="30" height="18" rx="6" fill="#f0e8d6"/><rect x="58" y="36" width="30" height="18" rx="6" fill="#f0e8d6"/></svg>`;
+   case 'armchair': return `<svg width="68" height="80" viewBox="0 0 68 80">
+     <ellipse cx="34" cy="74" rx="30" ry="5" fill="${sh}"/>
+     <rect x="14" y="12" width="40" height="28" rx="12" fill="#e6dcc8"/><rect x="14" y="12" width="40" height="8" rx="4" fill="${accent}" opacity=".55"/>
+     <rect x="8" y="24" width="52" height="40" rx="14" fill="#d8ccb4"/>
+     <rect x="3" y="26" width="16" height="38" rx="8" fill="#ccbfa4"/><rect x="49" y="26" width="16" height="38" rx="8" fill="#ccbfa4"/>
+     <rect x="21" y="34" width="26" height="18" rx="6" fill="#f0e8d6"/></svg>`;
+   case 'stool': return `<svg width="40" height="56" viewBox="0 0 40 56">
+     <ellipse cx="20" cy="52" rx="14" ry="4" fill="${sh}"/>
+     <rect x="17" y="24" width="6" height="26" fill="#8a7250"/><rect x="9" y="48" width="22" height="4" rx="2" fill="#8a7250"/>
+     <ellipse cx="20" cy="24" rx="15" ry="7" fill="${accent}"/><ellipse cx="20" cy="21" rx="15" ry="7" fill="#efe7d6"/></svg>`;
+   case 'table': return `<svg width="78" height="54" viewBox="0 0 78 54">
+     <ellipse cx="39" cy="48" rx="30" ry="5" fill="${sh}"/>
+     <rect x="35" y="24" width="8" height="22" fill="#9a6f45"/>
+     <ellipse cx="39" cy="25" rx="34" ry="12" fill="#a9764e"/><ellipse cx="39" cy="22" rx="34" ry="12" fill="#c48f5c"/></svg>`;
+   case 'plant': return `<svg width="56" height="82" viewBox="0 0 56 82">
+     <ellipse cx="28" cy="78" rx="20" ry="4" fill="${sh}"/>
+     <path d="M15 54 h26 l-3 22 h-20 z" fill="#c98b57"/><rect x="12" y="50" width="32" height="8" rx="3" fill="#d89a63"/>
+     <ellipse cx="28" cy="32" rx="20" ry="22" fill="#3f8a59"/><ellipse cx="15" cy="40" rx="11" ry="14" fill="#347a4c"/><ellipse cx="41" cy="40" rx="11" ry="14" fill="#347a4c"/><ellipse cx="28" cy="22" rx="10" ry="12" fill="#4f9a6a"/></svg>`;
+   default: return '';
+  }
+}
+function skyline(){
+  const b=[[40,90,70],[130,60,120],[210,110,60],[300,70,140],[400,95,80],[500,50,150],
+           [600,100,70],[690,65,130],[780,105,90],[880,55,150],[980,95,80],[1050,70,120]];
+  const rects=b.map(([x,w,h])=>`<rect x="${x}" y="${170-h}" width="${w}" height="${h}" rx="4" fill="rgba(120,150,190,${(0.25+Math.random()*0.2).toFixed(2)})"/>`).join('');
+  return `<svg class="sky" viewBox="0 0 1100 170" preserveAspectRatio="none" width="100%" height="100%">
+    <defs><linearGradient id="skg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bfe6ff"/><stop offset=".75" stop-color="#e6f4ff"/><stop offset="1" stop-color="#f2fbff"/></linearGradient></defs>
+    <rect width="1100" height="170" fill="url(#skg)"/><circle cx="180" cy="46" r="20" fill="#fff6d0"/>${rects}
+    <rect x="0" y="150" width="1100" height="20" fill="rgba(255,255,255,.15)"/></svg>`;
+}
 function buildGround(){
   const g=$('#ground'); g.style.position='absolute'; g.style.inset='0';
-  let html='<div class="grid"></div>';
-  // booth zones
-  BOOTHS.forEach(b=>{ html+=`<div class="booth ${b.tint?'tinted':''}" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px">
-    <div class="name">${b.name}</div></div>`; });
-  // decorative trees/bushes scattered around edges (world px)
-  const trees=[[40,260],[120,940],[1020,200],[1050,860],[520,30],[60,60],[900,1740],[160,1740],[1040,1500]];
-  trees.forEach(([x,y])=>html+=`<div class="tree" style="left:${x}px;top:${y}px;transform:translate(-50%,-90%)">
-     <svg viewBox="0 0 48 48"><rect x="21" y="34" width="6" height="14" rx="2" fill="#6b4a2e"/>
-     <circle cx="24" cy="22" r="18" fill="#3f8a59"/><circle cx="14" cy="28" r="11" fill="#347a4c"/><circle cx="34" cy="28" r="11" fill="#347a4c"/></svg></div>`);
-  const bushes=[[700,1180],[1000,980],[700,400],[850,560],[540,1160]];
-  bushes.forEach(([x,y])=>html+=`<div class="bush" style="left:${x}px;top:${y}px;width:64px;height:44px;transform:translate(-50%,-50%)"></div>`);
+  let html=`<div class="winwall">${skyline()}</div><div class="grid"></div>`;
+  // rugs (behind furniture)
+  RUGS.forEach(r=>html+=`<div class="rug" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;--rc:${r.c}"></div>`);
+  // zone labels
+  BOOTHS.forEach(b=>html+=`<div class="booth" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px"><div class="name">${b.name}</div></div>`);
+  // stage platform + screen + banners
+  html+=`<div class="stageplat" style="left:${STAGE.x}px;top:${STAGE.y}px;width:${STAGE.w}px;height:${STAGE.h}px"></div>`;
+  html+=`<div class="screen" style="left:${SCREEN.x}px;top:${SCREEN.y}px;width:${SCREEN.w}px;height:${SCREEN.h}px"><div class="scr-logo">팀메이트<span>Hello, 온라인 운동회!</span></div></div>`;
+  html+=`<div class="banner uni" style="left:${SCREEN.x-64}px;top:${SCREEN.y+30}px">🦄</div>`;
+  html+=`<div class="banner" style="left:${SCREEN.x+SCREEN.w+8}px;top:${SCREEN.y+30}px">팀메<br>이트</div>`;
+  // bar counter
+  html+=`<div class="barctr" style="left:${BAR.x}px;top:${BAR.y}px;width:${BAR.w}px;height:${BAR.h}px"><span>BAR</span></div>`;
+  // furniture
+  FURNITURE.forEach(f=>html+=`<div class="frn" style="left:${f.x}px;top:${f.y}px">${frnSVG(f.type,f.accent)}</div>`);
+  // empty-seat hints
+  SEATS.forEach(s=>html+=`<div class="seatmark" id="sm_${s.id}" style="left:${s.x}px;top:${s.y+24}px"></div>`);
   // gen lockers in the 기수 교류존
   LOCKERS.forEach(l=>{ html+=`<div class="locker" data-gen="${l.gen}"
      style="left:${l.x}px;top:${l.y}px;background:linear-gradient(180deg,${GENC[l.gen]},${shade(GENC[l.gen],-44)})">
@@ -611,9 +771,20 @@ function onTap(e){
   if(e.target.closest('.btn, .board, .mini, .hint'))return;
   const lk=e.target.closest('.locker');
   if(lk){openLocker(+lk.dataset.gen);return;}
+  if(pinching||touchCount>1)return;      // ignore taps mid-pinch
   const r=$('#stage').getBoundingClientRect();
-  // screen point -> world point (add camera offset)
-  let wx=(e.clientX-r.left)+cam.x, wy=(e.clientY-r.top)+cam.y;
+  // screen point -> world point (account for camera offset + zoom)
+  let wx=cam.x+(e.clientX-r.left)/zoom, wy=cam.y+(e.clientY-r.top)/zoom;
+  // tapped near a seat? walk over and sit (unless someone else is there)
+  let seat=null,bd=46;
+  for(const s of SEATS){const d=Math.hypot(s.x-wx,s.y-wy); if(d<bd){bd=d;seat=s;}}
+  if(seat){
+    const taken=entities.some(en=>en!==selfE&&(en.sitting===seat.id||en.pendingSit===seat.id));
+    if(!taken){selfE.pendingSit=seat.id;selfE.sitting=null;selfE.tx=seat.x;selfE.ty=seat.y;return;}
+    toast('이미 누가 앉아 있어요');
+  }
+  // floor tap: stand up (if seated) and move
+  selfE.sitting=null; selfE.pendingSit=null;
   selfE.tx=Math.max(24,Math.min(WORLD.w-24,wx));
   selfE.ty=Math.max(40,Math.min(WORLD.h-12,wy));
 }
@@ -719,21 +890,26 @@ function removeBots(){entities=entities.filter(e=>{if(e.kind==='bot'){e.el?.remo
 function botAI(b,now){
   if(now<b.nextAt)return;
   b.nextAt=now+1600+Math.random()*2800;
+  b.sitting=null; b.pendingSit=null;
   const roll=Math.random();
-  if(roll<0.5){const p=Math.random()<.5?PAD_O:PAD_X; b.tx=p.cx+(Math.random()-.5)*(p.w-30); b.ty=p.cy+(Math.random()-.5)*(p.h-30);}
+  if(roll<0.28){ // grab an empty seat and sit
+    const empty=SEATS.filter(s=>!entities.some(en=>en.sitting===s.id||en.pendingSit===s.id));
+    if(empty.length){const s=empty[Math.floor(Math.random()*empty.length)]; b.tx=s.x;b.ty=s.y;b.pendingSit=s.id; return;}
+  }
+  if(roll<0.6){const p=Math.random()<.5?PAD_O:PAD_X; b.tx=p.cx+(Math.random()-.5)*(p.w-30); b.ty=p.cy+(Math.random()-.5)*(p.h-30);}
   else {const z=BOOTHS[Math.floor(Math.random()*BOOTHS.length)]; b.tx=z.x+30+Math.random()*(z.w-60); b.ty=z.y+30+Math.random()*(z.h-60);}
 }
 
 /* ---- remote sync ---- */
 let lastPush=0;
-async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,x:Math.round(selfE.x),y:Math.round(selfE.y),ts:Date.now()},true); }
+async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,x:Math.round(selfE.x),y:Math.round(selfE.y),sit:selfE.sitting||null,ts:Date.now()},true); }
 async function pollRemote(){
   const keys=await slist('p:',true); const now=Date.now(); const seen=new Set();
   for(const k of keys){ const v=await sget(k,true); if(!v)continue; let d;try{d=JSON.parse(v);}catch(e){continue;}
     const id=k.slice(2); if(id===me.id)continue; if(now-d.ts>12000)continue; seen.add(id);
     let e=entities.find(x=>x.id===id);
-    if(!e){e={id,kind:'remote',nick:d.nick,gen:d.gen,char:d.char,x:d.x,y:d.y,tx:d.x,ty:d.y,face:1};entities.push(e);ensureEl(e);}
-    else {e.tx=d.x;e.ty=d.y;}
+    if(!e){e={id,kind:'remote',nick:d.nick,gen:d.gen,char:d.char,x:d.x,y:d.y,tx:d.x,ty:d.y,face:1,sitting:d.sit||null};entities.push(e);ensureEl(e);}
+    else {e.tx=d.x;e.ty=d.y;e.sitting=d.sit||null;}
   }
   entities=entities.filter(e=>{if(e.kind==='remote'&&!seen.has(e.id)){e.el?.remove();return false;}return true;});
 }
@@ -761,19 +937,31 @@ function loop(t){
   let o=0,x=0;
   for(const e of entities){
     if(e.kind==='bot')botAI(e,now);
+    const el=e.el;
+    if(e.sitting){ // pinned to the seat
+      const s=SEATBYID[e.sitting];
+      if(s){e.x=s.x;e.y=s.y;e.tx=s.x;e.ty=s.y;e.face=s.face;}
+      el.style.left=e.x+'px'; el.style.top=e.y+'px'; el.style.zIndex=Math.round(e.y);
+      el.classList.add('sitting'); el.classList.remove('moving'); el.classList.toggle('left',e.face<0);
+      if(inPad(e.x,e.y,PAD_O))o++; else if(inPad(e.x,e.y,PAD_X))x++;
+      continue;
+    }
+    el.classList.remove('sitting');
     const dx=e.tx-e.x, dy=e.ty-e.y, dist=Math.hypot(dx,dy);
     const moving=dist>2;
     if(moving){const s=Math.min(dist,SPEED*dt);e.x+=dx/dist*s;e.y+=dy/dist*s;if(Math.abs(dx)>1)e.face=dx<0?-1:1;}
+    else if(e.pendingSit){e.sitting=e.pendingSit;e.pendingSit=null;} // arrived → sit
     if(inPad(e.x,e.y,PAD_O))o++; else if(inPad(e.x,e.y,PAD_X))x++;
-    const el=e.el; el.style.left=e.x+'px'; el.style.top=e.y+'px'; el.style.zIndex=Math.round(e.y);
+    el.style.left=e.x+'px'; el.style.top=e.y+'px'; el.style.zIndex=Math.round(e.y);
     el.classList.toggle('moving',moving); el.classList.toggle('left',e.face<0);
   }
-  // camera follows self, clamped to world bounds
-  let tcx=selfE.x-view.w/2, tcy=selfE.y-view.h/2;
-  tcx=Math.max(0,Math.min(WORLD.w-view.w,tcx));
-  tcy=Math.max(0,Math.min(WORLD.h-view.h,tcy));
+  // camera follows self, clamped to world bounds (visible area shrinks/grows with zoom)
+  const visW=view.w/zoom, visH=view.h/zoom;
+  let tcx=selfE.x-visW/2, tcy=selfE.y-visH/2;
+  tcx = visW>=WORLD.w ? (WORLD.w-visW)/2 : Math.max(0,Math.min(WORLD.w-visW,tcx));
+  tcy = visH>=WORLD.h ? (WORLD.h-visH)/2 : Math.max(0,Math.min(WORLD.h-visH,tcy));
   cam.x+=(tcx-cam.x)*Math.min(1,dt*8); cam.y+=(tcy-cam.y)*Math.min(1,dt*8);
-  $('#world').style.transform=`translate(${-cam.x}px,${-cam.y}px)`;
+  $('#world').style.transform=`scale(${zoom}) translate(${-cam.x}px,${-cam.y}px)`;
 
   const cO=$('#cO'),cX=$('#cX');
   if(cO&&cO.textContent!=String(o))cO.textContent=o;
@@ -785,16 +973,17 @@ function drawMini(){
   const cv=$('#miniC'); if(!cv)return; const ctx=cv.getContext('2d');
   const sx=cv.width/WORLD.w, sy=cv.height/WORLD.h;
   ctx.clearRect(0,0,cv.width,cv.height);
-  ctx.fillStyle='rgba(60,120,80,.5)'; ctx.fillRect(0,0,cv.width,cv.height);
-  // booths
-  ctx.fillStyle='rgba(255,255,255,.18)';
-  BOOTHS.forEach(b=>ctx.fillRect(b.x*sx,b.y*sy,b.w*sx,b.h*sy));
+  ctx.fillStyle='#e2d4ba'; ctx.fillRect(0,0,cv.width,cv.height);              // floor
+  ctx.fillStyle='rgba(150,190,230,.55)'; ctx.fillRect(0,0,cv.width,7*sy);    // window wall
+  // furniture blocks
+  ctx.fillStyle='rgba(90,70,40,.5)';
+  FURNITURE.forEach(f=>ctx.fillRect((f.x-14)*sx,(f.y-14)*sy,28*sx,12*sy));
   // pads
   ctx.fillStyle='rgba(63,214,196,.8)'; ctx.fillRect((PAD_O.cx-PAD_O.w/2)*sx,(PAD_O.cy-PAD_O.h/2)*sy,PAD_O.w*sx,PAD_O.h*sy);
   ctx.fillStyle='rgba(255,122,138,.8)'; ctx.fillRect((PAD_X.cx-PAD_X.w/2)*sx,(PAD_X.cy-PAD_X.h/2)*sy,PAD_X.w*sx,PAD_X.h*sy);
   // viewport rect
-  ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1;
-  ctx.strokeRect(cam.x*sx,cam.y*sy,view.w*sx,view.h*sy);
+  ctx.strokeStyle='rgba(60,40,20,.8)'; ctx.lineWidth=1;
+  ctx.strokeRect(cam.x*sx,cam.y*sy,(view.w/zoom)*sx,(view.h/zoom)*sy);
   // entities
   for(const e of entities){ ctx.fillStyle = e.kind==='me'?'#ff7a59':(GENC[e.gen]||'#fff');
     const r=e.kind==='me'?2.5:1.6; ctx.beginPath(); ctx.arc(e.x*sx,e.y*sy,r,0,7); ctx.fill(); }
