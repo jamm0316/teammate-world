@@ -255,7 +255,8 @@
       <div class="mark">팀메이트 라이브</div>
       <div class="right">
         <button class="btn" id="btnNpc">NPC ON</button>
-        <button class="btn hot" id="btnNext">다음 문제 ▶</button>
+        <button class="btn hot" id="btnGames">🎮 종목</button>
+        <button class="btn" id="btnNext">다음 문제 ▶</button>
         <button class="btn" id="btnReset">↺</button>
       </div>
     </div>
@@ -548,6 +549,7 @@ function enterGame(){
   buildGround(); buildBoard();
   $('#btnNext').onclick=async()=>{qidx=(qidx+1)%QUESTIONS.length;await sset('quiz:idx',String(qidx),true);buildBoard();toast('다음 문제!');};
   $('#btnNpc').onclick=()=>{botsOn=!botsOn;$('#btnNpc').textContent='NPC '+(botsOn?'ON':'OFF');$('#btnNpc').classList.toggle('off',!botsOn);if(botsOn)spawnBots();else removeBots();};
+  $('#btnGames').onclick=()=>{if(window.Games)window.Games.openMenu();else toast('종목 로딩 중…');};
   $('#btnReset').onclick=async()=>{await sset('me',null,false);mem.false={};location.reload();};
   $('#stage').addEventListener('pointerdown',onTap);
 
@@ -833,6 +835,9 @@ function maybeShowA2HS(){
 }
 window.addEventListener('load', maybeShowA2HS);
 </script>
+
+<!-- 종목(줄다리기·계주): 위 인라인 스크립트의 전역을 공유하는 classic script -->
+<script src="games.js"></script>
 
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
