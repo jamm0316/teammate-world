@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'tw-v8';
+const CACHE_VERSION = 'tw-v9';
 const PRECACHE = ['./', 'manifest.json', 'games.js',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 

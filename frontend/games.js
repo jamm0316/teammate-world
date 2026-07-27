@@ -273,6 +273,7 @@
     ov.close=()=>{killed=true;cleanups.forEach(f=>{try{f();}catch(e){}});_close();};
     const R=4, MY=1, STEPS=28, SPAWN=0.97, GAP=0.05;   // 4주자·내가 2주자·한바퀴 28스텝
     const LANES=6, ZA=0.5;                             // 트랙 6레인 / 인계구역 반각(rad)
+    const CHEER_TAP=0.20, CHEER_DECAY=1.8, CHEER_MAX=0.26;  // 응원: 탭당 충전 / 감쇠율 / 최대 가속
 
     /* ── 트랙 기하 ──────────────────────────────────────────────
        좌표계는 0~100 정규화(SVG viewBox + preserveAspectRatio=none와 공유)이지만,
@@ -349,7 +350,7 @@
       </div>
       <div class="rl-foot">
         <button class="rl-act" id="rlAct" hidden></button>
-        <button class="rl-cheer" id="rlCheer" hidden>📣 응원하기!<i><b id="rlGauge"></b></i></button>
+        <button class="rl-cheer" id="rlCheer" hidden><span id="rlCheerL">📣 응원하기!</span><i><b id="rlGauge"></b></i></button>
         <div class="rl-feet">
           <button class="rl-ftbtn" id="rlL" disabled>👟<small>왼발</small></button>
           <button class="rl-ftbtn" id="rlR" disabled>👟<small>오른발</small></button>
@@ -363,7 +364,7 @@
           status=$('#rlStatus'), ribbon=$('#rlRibbon'), bannerWrap=$('#rlBanner'),
           countEl=$('#rlCount'), result=$('#rlResult'),
           bL=$('#rlL'), bR=$('#rlR'), act=$('#rlAct'), hint=$('#rlHint'),
-          cheerBtn=$('#rlCheer'), gauge=$('#rlGauge');
+          cheerBtn=$('#rlCheer'), cheerLbl=$('#rlCheerL'), gauge=$('#rlGauge');
     const curEl={},nxtEl={},curCh={},nxtCh={},pcur={},pnxt={},pcurN={},pnxtN={},rankRow={};
     TEAMS.forEach(g=>{
       curEl[g]=$('#rlCur'+g); nxtEl[g]=$('#rlNxt'+g);
@@ -507,9 +508,12 @@
       else if(s.leg===MY){ if(s.nextSpawned&&s.canTouch&&s.handoff==null){ s.handoff='touch'; s.htAt=performance.now(); toast('🎽 바통 터치!'); } }
     });
 
-    /* 응원 — 내가 달리지 않는 구간에 연타하면 우리 팀 봇 주자가 빨라진다(최대 +22%) */
+    /* 응원 — 내가 달리지 않는 구간에 연타하면 우리 팀 봇 주자가 빨라진다(최대 +26%).
+       감쇠는 지수형(비율 감쇠). 선형 감쇠로 하면 "초당 N회 미만은 효과 0"인 절벽이 생겨
+       보통 연타 속도(초당 3~5회)에서 아무 일도 일어나지 않는다. 지수형이면
+       게이지가 대략 연타 속도에 비례해 수렴한다(초당 4회≈0.44, 9회≈만땅). */
     cheerBtn.addEventListener('pointerdown',e=>{ e.preventDefault();
-      if(!started||ended)return; cheer=Math.min(1,cheer+0.08); vib(6);
+      if(!started||ended)return; cheer=Math.min(1,cheer+CHEER_TAP); vib(6);
       cheerBtn.classList.remove('pump'); void cheerBtn.offsetWidth; cheerBtn.classList.add('pump'); });
 
     /* 카운트다운 → 출발 */
@@ -557,13 +561,13 @@
     ov.loop(t=>{
       if(killed)return;
       const dt=Math.min(.05,(t-last)/1000); last=t;
-      cheer=Math.max(0,cheer-0.5*dt);
+      cheer=Math.max(0,cheer*(1-CHEER_DECAY*dt)-0.02*dt);
       if(started&&!ended){
         TEAMS.forEach(g=>{
           const s=T[g]; if(s.finished)return;
           const humanRun=(g===mg&&s.leg===MY&&s.received);
           if(humanRun) s.u=Math.min(1,s.steps/STEPS);
-          else s.u=Math.min(1,s.u+s.speed*dt*(0.8+Math.random()*0.4)*(g===mg?1+0.22*cheer:1));
+          else s.u=Math.min(1,s.u+s.speed*dt*(0.8+Math.random()*0.4)*(g===mg?1+CHEER_MAX*cheer:1));
           if(s.leg===R-1&&s.u>=1){ s.finished=true; s.u=1; place++; s.rank=place; s.lapEvent=true; refresh(g);
             if(place===1)endRace(g); return; }
           if(s.leg<R-1&&!s.nextSpawned&&s.u>=SPAWN){ s.nextSpawned=true; s.nu=0; s.handoff=null; refresh(g); }
@@ -607,7 +611,8 @@
       else act.hidden=true;
       const canCheer=(phase==='wait'||phase==='spectate');
       cheerBtn.hidden=!canCheer;
-      if(canCheer) gauge.style.width=(cheer*100).toFixed(0)+'%';
+      if(canCheer){ gauge.style.width=(cheer*100).toFixed(0)+'%';
+        cheerLbl.textContent=cheer>0.02?`📣 응원하기! +${(CHEER_MAX*cheer*100).toFixed(0)}%`:'📣 응원하기!'; }
       hint.textContent = phase==='wait'?'앞 주자가 달리는 중 — 연타로 응원하면 더 빨라져요!'
         : phase==='receive'?'천천히 준비 주행 중 — 바통을 받으세요'
         : phase==='run'?'왼발·오른발 번갈아 질주!'
