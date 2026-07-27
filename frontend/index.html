@@ -171,8 +171,10 @@
   /* avatars live INSIDE .world */
   #avatars{position:absolute;inset:0;pointer-events:none}
   .av{position:absolute;width:56px;height:74px;transform:translate(-50%,-100%);transition:none;z-index:3}
-  .av .tag{position:absolute;top:-4px;left:50%;transform:translateX(-50%);white-space:nowrap;
-    font-family:var(--round);font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:10px;display:flex;align-items:center;gap:5px}
+  .av .tag{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);white-space:nowrap;
+    font-family:var(--round);font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .av .tag .tnm{display:flex;align-items:center;gap:5px}
+  .av .tag .ttls{display:flex;align-items:center;justify-content:center;gap:3px;flex-wrap:wrap}
   .av .tag i{font-style:normal;font-size:10px;font-weight:700;color:#15121f;padding:1px 5px;border-radius:7px;line-height:1.3}
   .av .tag i.ttl{background:linear-gradient(100deg,#ffd54a,#ffb454);color:#5a3a00;
     box-shadow:0 0 6px rgba(255,200,60,.6);animation:ttlglow 1.8s ease infinite}
@@ -692,7 +694,7 @@ function enterGame(){
 
   // spawn in the central plaza
   const px=BOOTHS[0].x+BOOTHS[0].w/2, py=BOOTHS[0].y+BOOTHS[0].h/2;
-  selfE={id:me.id,kind:'me',nick:me.nick,gen:me.gen,role:me.role,char:me,title:me.title||null,x:px,y:py,tx:px,ty:py,face:1};
+  selfE={id:me.id,kind:'me',nick:me.nick,gen:me.gen,role:me.role,char:me,titles:titlesOf(me),x:px,y:py,tx:px,ty:py,face:1};
   entities=[selfE]; ensureEl(selfE);
   cam.x=selfE.x-view.w/2; cam.y=selfE.y-view.h/2;
   spawnBots();
@@ -931,14 +933,15 @@ function botAI(b,now){
 
 /* ---- remote sync ---- */
 let lastPush=0;
-async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,title:me.title||null,x:Math.round(selfE.x),y:Math.round(selfE.y),sit:selfE.sitting||null,ts:Date.now()},true); }
+async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,titles:titlesOf(me),x:Math.round(selfE.x),y:Math.round(selfE.y),sit:selfE.sitting||null,ts:Date.now()},true); }
 async function pollRemote(){
   const keys=await slist('p:',true); const now=Date.now(); const seen=new Set();
   for(const k of keys){ const v=await sget(k,true); if(!v)continue; let d;try{d=JSON.parse(v);}catch(e){continue;}
     const id=k.slice(2); if(id===me.id)continue; if(now-d.ts>12000)continue; seen.add(id);
     let e=entities.find(x=>x.id===id);
-    if(!e){e={id,kind:'remote',nick:d.nick,gen:d.gen,char:d.char,title:d.title||null,x:d.x,y:d.y,tx:d.x,ty:d.y,face:1,sitting:d.sit||null};entities.push(e);ensureEl(e);}
-    else {e.tx=d.x;e.ty=d.y;e.sitting=d.sit||null; if((d.title||null)!==(e.title||null)){e.title=d.title||null; if(e.el){const tag=e.el.querySelector('.tag'); if(tag)tag.outerHTML=tagHTML(e);}}}
+    const dTitles=titlesOf(d);
+    if(!e){e={id,kind:'remote',nick:d.nick,gen:d.gen,char:d.char,titles:dTitles,x:d.x,y:d.y,tx:d.x,ty:d.y,face:1,sitting:d.sit||null};entities.push(e);ensureEl(e);}
+    else {e.tx=d.x;e.ty=d.y;e.sitting=d.sit||null; if(dTitles.join(',')!==(e.titles||[]).join(',')){e.titles=dTitles; if(e.el){const tag=e.el.querySelector('.tag'); if(tag)tag.outerHTML=tagHTML(e);}}}
   }
   entities=entities.filter(e=>{if(e.kind==='remote'&&!seen.has(e.id)){e.el?.remove();return false;}return true;});
 }
@@ -958,18 +961,28 @@ function ensureEl(e){
   d.innerHTML=tagHTML(e)+fx+`<div class="cbox">${buildChar(e.char)}</div>`;
   $('#avatars').appendChild(d); e.el=d;
 }
-// 이름표 마크업(기수·역할·칭호 뱃지 포함) — self/remote 공용
+// 보유 칭호 배열로 정규화(구버전 단일 title 필드도 흡수)
+function titlesOf(e){
+  const t=e.titles||(e.char&&e.char.titles);
+  if(Array.isArray(t))return t;
+  const single=e.title||(e.char&&e.char.title);
+  return single?[single]:[];
+}
+function titleBadge(t){ return t.includes('계주')?'🏃 달인':'🪢 달인'; }
+// 이름표 마크업(칭호 뱃지는 이름 윗줄에 별도 표시) — self/remote 공용
 function tagHTML(e){
   const role=e.role||(e.char&&e.char.role);
-  const title=e.title||(e.char&&e.char.title);
-  const badge=title?(title.includes('계주')?'🏃 달인':'🪢 달인'):'';
-  return `<div class="tag">${title?`<i class="ttl" title="${esc(title)}">${badge}</i>`:''}<i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div>`;
+  const titles=titlesOf(e);
+  const ttls=titles.length?`<div class="ttls">${titles.map(t=>`<i class="ttl" title="${esc(t)}">${titleBadge(t)}</i>`).join('')}</div>`:'';
+  return `<div class="tag">${ttls}<div class="tnm"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div></div>`;
 }
 // 종목 우승 등으로 칭호를 부여하고 즉시 반영(저장·이름표·브로드캐스트)
 async function awardTitle(t){
-  if(!me||me.title===t)return;
-  me.title=t; await sset('me',me,false);
-  if(selfE){ selfE.title=t; if(selfE.el){ const tag=selfE.el.querySelector('.tag'); if(tag)tag.outerHTML=tagHTML(selfE); } }
+  if(!me)return;
+  const cur=titlesOf(me);
+  if(cur.includes(t))return;
+  me.titles=[...cur,t]; delete me.title; await sset('me',me,false);
+  if(selfE){ selfE.titles=me.titles; if(selfE.el){ const tag=selfE.el.querySelector('.tag'); if(tag)tag.outerHTML=tagHTML(selfE); } }
   pushSelf();
 }
 let last=0;
