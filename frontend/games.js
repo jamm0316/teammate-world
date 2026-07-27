@@ -37,6 +37,12 @@
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  // 봇 선수 이름 풀(내 캐릭터는 실제 닉네임 사용)
+  const NAMES=['민준','서연','도윤','하은','지호','수아','시우','예린','주원','다은','건우','서윤','현우','지유','유준','채원','정우','소율'];
+  function fighterName(c,used){
+    if(c===me) return (me&&me.nick)||'나';
+    let n,g=0; do{ n=NAMES[Math.floor(Math.random()*NAMES.length)]; }while(used.has(n)&&g++<24); used.add(n); return n;
+  }
   // requestAnimationFrame 러너(단계마다 stop 가능, 오버레이 닫히면 자동 종료)
   function animate(root,fn){
     let alive=true, last=performance.now(), id=0;
@@ -61,11 +67,13 @@
         <div class="gm-status" id="tgStatus">대진 추첨…</div>
         <button class="btn gm-close" id="tgClose">✕</button>
       </div>
+      <div class="tg-timer" id="tgTimer"></div>
       <div class="tg-bracket" id="tgBracket"></div>
       <div class="tg-stage" id="tgStage"></div>`;
     ov.root.querySelector('#tgClose').onclick=ov.close;
     const stageEl=ov.root.querySelector('#tgStage');
     const statusEl=ov.root.querySelector('#tgStatus');
+    const timerEl=ov.root.querySelector('#tgTimer');
 
     function renderBracket(active){
       const cell=g=> g==null
@@ -145,11 +153,13 @@
         const knotEl=ov.root.querySelector('#tgKnot');
         const L=ov.root.querySelector('#tgL'), Rr=ov.root.querySelector('#tgR');
         const leftChars=teamChars(gA,4,gA===mg), rightChars=teamChars(gB,4,gB===mg);
-        L.innerHTML=leftChars.map(c=>`<div class="gm-ch">${buildChar(c)}</div>`).join('');
-        Rr.innerHTML=rightChars.map(c=>`<div class="gm-ch flip">${buildChar(c)}</div>`).join('');
+        const usedN=new Set();
+        const fighter=(c,flip)=>`<div class="tg-fighter"><div class="gm-ch${flip?' flip':''}">${buildChar(c)}</div><span class="tg-name">${esc(fighterName(c,usedN))}</span></div>`;
+        L.innerHTML=leftChars.map(c=>fighter(c,false)).join('');
+        Rr.innerHTML=rightChars.map(c=>fighter(c,true)).join('');
         const cells=[
-          ...[...L.children].map((el,i)=>({el,char:leftChars[i],side:'L'})),
-          ...[...Rr.children].map((el,i)=>({el,char:rightChars[i],side:'R'})),
+          ...[...L.querySelectorAll('.gm-ch')].map((el,i)=>({el,char:leftChars[i],side:'L'})),
+          ...[...Rr.querySelectorAll('.gm-ch')].map((el,i)=>({el,char:rightChars[i],side:'R'})),
         ];
         function setExpr(cell,ex){ if(!ov.root.isConnected)return; cell.el.innerHTML=buildChar(cell.char,ex); }
         // 이따금 힘든 표정으로 바뀌었다 돌아옴
@@ -195,13 +205,15 @@
           knot+=(frac-knot)*Math.min(1,dt*4);
           arena.style.setProperty('--pull',(knot-0.5).toFixed(3));
           knotEl.style.left=((1-knot)*100)+'%';
-          if(running){ stAcc+=dt; if(stAcc>.2){stAcc=0;
+          if(running){ timerEl.textContent=Math.ceil(tLeft); timerEl.classList.toggle('low',tLeft<=3);
+            stAcc+=dt; if(stAcc>.2){stAcc=0;
             const lead = avgL>avgR?gA:gB;
             const name = tag==='f'?'결승':(tag==='s0'?'준결승 1':'준결승 2');
-            statusEl.textContent=`${name} · ${Math.ceil(tLeft)}초 · 우세 ${GEN[lead]}`; } }
+            statusEl.textContent=`${name} · 우세 ${GEN[lead]}`; } }
         });
 
         function finish(){
+          timerEl.textContent=''; timerEl.classList.remove('low');
           const avgL=tapsL/memL, avgR=tapsR/memR;
           const win = avgL>=avgR?gA:gB, winSide = win===gA?'L':'R';
           statusEl.textContent = win===mg?'🎉 승리!':`${GEN[win]} 승리`;
@@ -419,6 +431,14 @@
 
     /* 줄다리기 토너먼트 */
     .tg-stage{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+    /* 남은 시간(화면 상단 가운데) */
+    .tg-timer{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:26;
+      font-family:var(--display);font-size:34px;line-height:1.1;color:#fff;min-width:60px;text-align:center;
+      padding:4px 18px;border-radius:16px;background:rgba(10,8,18,.62);box-shadow:0 4px 14px -4px rgba(0,0,0,.6);
+      text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none}
+    .tg-timer:empty{display:none}
+    .tg-timer.low{color:#ff6b6b;animation:tgtick .5s ease infinite alternate}
+    @keyframes tgtick{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.14)}}
     /* 대진표 */
     .tg-bracket{display:flex;align-items:center;gap:6px;padding:8px 16px 2px;justify-content:center}
     .brcol{display:flex;flex-direction:column;gap:8px}
@@ -457,10 +477,13 @@
     .tg-badge{position:absolute;top:10px;font-family:var(--round);font-size:12px;font-weight:700;color:#15121f;padding:3px 10px;border-radius:10px;z-index:5}
     .tg-badge.tg-bl{left:12px} .tg-badge.tg-br{right:12px}
     .tg-knot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:30px;transition:left .12s linear;z-index:4;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
-    .tg-side{position:absolute;top:50%;display:flex;gap:-8px;z-index:3;
+    .tg-side{position:absolute;top:50%;display:flex;align-items:flex-end;z-index:3;
       transform:translateY(-50%) translateX(calc(var(--pull,0) * -16px));transition:transform .12s linear}
-    .tg-side.left{left:6%} .tg-side.right{right:6%}
-    .tg-side .gm-ch{margin:0 -10px;width:46px;height:60px;transition:transform .3s,filter .3s}
+    .tg-side.left{left:5%} .tg-side.right{right:5%}
+    .tg-fighter{display:flex;flex-direction:column;align-items:center;margin:0 -5px}
+    .tg-name{margin-top:1px;font-family:var(--round);font-size:9px;color:#fff;background:rgba(0,0,0,.42);
+      padding:1px 5px;border-radius:6px;max-width:58px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tg-side .gm-ch{width:46px;height:60px;transition:transform .3s,filter .3s}
     .gm-ch.grit svg{animation:tgshake .18s ease infinite}
     @keyframes tgshake{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px)}}
     .gm-ch.cheer{animation:tgjump .55s ease infinite}
