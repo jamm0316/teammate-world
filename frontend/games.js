@@ -269,14 +269,43 @@
   function startRelay(){
     if(!me){toast('먼저 캐릭터를 만들어주세요');return;}
     const ov=overlay(), mg=myGen();
-    let killed=false; const _close=ov.close; ov.close=()=>{killed=true;_close();};
-    const R=4, MY=1, STEPS=18, SPAWN=0.97, GAP=0.05;   // 4주자·내가 2주자·한바퀴 18스텝
+    let killed=false; const cleanups=[]; const _close=ov.close;
+    ov.close=()=>{killed=true;cleanups.forEach(f=>{try{f();}catch(e){}});_close();};
+    const R=4, MY=1, STEPS=28, SPAWN=0.97, GAP=0.05;   // 4주자·내가 2주자·한바퀴 28스텝
+    const LANES=6, ZA=0.5;                             // 트랙 6레인 / 인계구역 반각(rad)
 
-    /* 트랙 기하: 정규화 0~100(SVG preserveAspectRatio=none와 좌표 공유), 팀별 레인 */
-    const RX0=43, RY0=41, dRX=4.2, dRY=4;
+    /* ── 트랙 기하 ──────────────────────────────────────────────
+       좌표계는 0~100 정규화(SVG viewBox + preserveAspectRatio=none와 공유)이지만,
+       아레나의 실제 픽셀 비율(kx/ky)로 역보정해서 그리므로 곡선이 '타원'이 아니라
+       진짜 '원'으로 렌더된다. 형태는 직선 2 + 반원 2 = 스타디움(육상 트랙) 곡선.
+       내부 계산은 항상 '직선이 세로'인 정규 좌표로 하고, 가로가 더 긴 화면에서는
+       orient()로 -90° 돌려 긴 축에 직선이 놓이게 한다.                        */
     const laneOf=g=>TEAMS.indexOf(g);
-    const lane=g=>{const i=laneOf(g);return{rx:RX0-i*dRX,ry:RY0-i*dRY};};
-    const pt=(g,u)=>{const{rx,ry}=lane(g);const a=-Math.PI/2-2*Math.PI*u;return{x:50+rx*Math.cos(a),y:50+ry*Math.sin(a)};};
+    let GEO=null;
+    function measure(){
+      const W=Math.max(160,arena.clientWidth), H=Math.max(160,arena.clientHeight);
+      const S=Math.min(W,H), L=Math.max(W,H);
+      const M=6, sw=Math.max(7,Math.min(13,S*0.032));  // 바깥 여백 / 관중석 두께(px)
+      const rOut=S/2-M-sw;                             // 트랙 바깥 반경(px)
+      const lw=Math.min(16,rOut*0.66/LANES);           // 레인 폭(px)
+      return {W,H,kx:100/W,ky:100/H,sw,rOut,lw,rIn:rOut-lw*LANES,h:(L-S)/2,vert:H>=W};
+    }
+    const orient=p=>GEO.vert?p:{X:p.Y,Y:-p.X};
+    /* 팀 레인 반경 — 6레인 중 안쪽에서 두 번째~다섯 번째를 4팀이 사용 */
+    const laneR=g=>GEO.rOut-(laneOf(g)+1.5)*GEO.lw;
+    /* 진행률 u(0~1) → 스타디움 곡선 위의 픽셀 오프셋(중심 기준). 반시계 방향, u=0은 결승선 */
+    function ptPx(r,u){
+      const h=GEO.h, qa=Math.PI*r/2, P=2*Math.PI*r+4*h;
+      let s=(((u%1)+1)%1)*P, a;
+      if(s<qa){ a=s/r; return{X:-r*Math.sin(a),Y:-h-r*Math.cos(a)}; }          // 좌상단 1/4 곡선
+      if((s-=qa)<2*h) return{X:-r,Y:-h+s};                                      // 좌측 직선(하행)
+      if((s-=2*h)<Math.PI*r){ a=s/r; return{X:-r*Math.cos(a),Y:h+r*Math.sin(a)}; } // 하단 반원
+      if((s-=Math.PI*r)<2*h) return{X:r,Y:h-s};                                 // 우측 직선(상행)
+      a=(s-2*h)/r; return{X:r*Math.cos(a),Y:-h-r*Math.sin(a)};                  // 우상단 1/4 곡선
+    }
+    /* 결승선 곡선 위, 결승선 기준 각 a·반경 r인 지점 */
+    const curveAt=(r,a)=>orient({X:r*Math.sin(a),Y:-GEO.h-r*Math.cos(a)});
+    const pt=(g,u)=>{const p=orient(ptPx(laneR(g),u));return{x:50+p.X*GEO.kx,y:50+p.Y*GEO.ky};};
 
     /* 팀 상태 */
     const T={};
@@ -285,22 +314,8 @@
       const used=new Set(), myNick=(me&&me.nick)||'나'; if(g===mg)used.add(myNick);
       const names=chars.map((c,i)=>(g===mg&&i===MY)?myNick:fighterName(c,used));
       T[g]={chars,names,leg:0,u:0,nu:0,nextSpawned:false,handoff:null,canTouch:false,htAt:0,
-        received:g!==mg,steps:0,speed:0.15+Math.random()*0.05,finished:false,rank:0,lapEvent:false,curShown:-1};
+        received:g!==mg,steps:0,speed:0.10+Math.random()*0.03,finished:false,rank:0,lapEvent:false,curShown:-1};
     });
-
-    /* 트랙 SVG(레인 라인 자동 생성) */
-    const laneLines=[42,38.5,35,31.5,28].map(rx=>`<ellipse cx="50" cy="50" rx="${rx}" ry="${(rx*RY0/RX0).toFixed(2)}"/>`).join('');
-    const trackSVG=`<svg class="rl-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <rect x="0" y="0" width="100" height="100" fill="#2f7d4f"/>
-      <ellipse cx="50" cy="50" rx="46.5" ry="44.3" fill="#347f52"/>
-      <ellipse cx="50" cy="50" rx="45" ry="43" fill="#c8623a"/>
-      <ellipse cx="50" cy="50" rx="45" ry="43" fill="none" stroke="#fff" stroke-width=".45" opacity=".7"/>
-      <g fill="none" stroke="rgba(255,255,255,.4)" stroke-width=".2">${laneLines}</g>
-      <ellipse cx="50" cy="50" rx="26" ry="24.5" fill="#347f52"/>
-      <ellipse cx="50" cy="50" rx="26" ry="24.5" fill="none" stroke="#fff" stroke-width=".4" opacity=".55"/>
-      <ellipse cx="50" cy="50" rx="12" ry="10.5" fill="#c8996a" opacity=".8"/>
-      <rect x="49.2" y="7" width="1.6" height="18" fill="rgba(255,255,255,.9)"/>
-    </svg>`;
 
     ov.root.innerHTML=`
       <div class="gm-top">
@@ -309,13 +324,15 @@
         <button class="btn gm-close" id="rlClose">✕</button>
       </div>
       <div class="rl-arena" id="rlArena">
-        ${trackSVG}
-        <div class="rl-ribbon" id="rlRibbon"><span>FINISH</span></div>
-        <div class="rl-banner-wrap" id="rlBanner"></div>
-        <div class="rl-runners" id="rlRunners">
-          ${TEAMS.map(g=>`<div class="rl-run" id="rlCur${g}"><div class="gm-ch"></div></div>
-            <div class="rl-run next" id="rlNxt${g}"><div class="gm-ch"></div></div>`).join('')}
+        <div class="rl-world" id="rlWorld">
+          <svg class="rl-svg" id="rlSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div class="rl-ribbon" id="rlRibbon"><span>FINISH</span></div>
+          <div class="rl-runners" id="rlRunners">
+            ${TEAMS.map(g=>`<div class="rl-run${g===mg?' mine':''}" id="rlCur${g}"><div class="gm-ch"></div></div>
+              <div class="rl-run next${g===mg?' mine':''}" id="rlNxt${g}"><div class="gm-ch"></div></div>`).join('')}
+          </div>
         </div>
+        <div class="rl-banner-wrap" id="rlBanner"></div>
         <div class="rl-portraits" id="rlPort">
           ${TEAMS.map(g=>`<div class="rl-pcard ${g===mg?'me':''}" style="--gc:${GENC[g]}">
             <span class="rl-ptag" style="background:${GENC[g]}">${GEN[g]}</span>
@@ -332,6 +349,7 @@
       </div>
       <div class="rl-foot">
         <button class="rl-act" id="rlAct" hidden></button>
+        <button class="rl-cheer" id="rlCheer" hidden>📣 응원하기!<i><b id="rlGauge"></b></i></button>
         <div class="rl-feet">
           <button class="rl-ftbtn" id="rlL" disabled>👟<small>왼발</small></button>
           <button class="rl-ftbtn" id="rlR" disabled>👟<small>오른발</small></button>
@@ -341,9 +359,11 @@
     ov.root.querySelector('#rlClose').onclick=ov.close;
 
     const $=id=>ov.root.querySelector(id);
-    const status=$('#rlStatus'), ribbon=$('#rlRibbon'), bannerWrap=$('#rlBanner'),
+    const arena=$('#rlArena'), svg=$('#rlSvg'),
+          status=$('#rlStatus'), ribbon=$('#rlRibbon'), bannerWrap=$('#rlBanner'),
           countEl=$('#rlCount'), result=$('#rlResult'),
-          bL=$('#rlL'), bR=$('#rlR'), act=$('#rlAct'), hint=$('#rlHint');
+          bL=$('#rlL'), bR=$('#rlR'), act=$('#rlAct'), hint=$('#rlHint'),
+          cheerBtn=$('#rlCheer'), gauge=$('#rlGauge');
     const curEl={},nxtEl={},curCh={},nxtCh={},pcur={},pnxt={},pcurN={},pnxtN={},rankRow={};
     TEAMS.forEach(g=>{
       curEl[g]=$('#rlCur'+g); nxtEl[g]=$('#rlNxt'+g);
@@ -351,6 +371,74 @@
       pcur[g]=$('#rlPcur'+g); pnxt[g]=$('#rlPnxt'+g); pcurN[g]=$('#rlPcurN'+g); pnxtN[g]=$('#rlPnxtN'+g);
       rankRow[g]=$('#rlRk'+g);
     });
+
+    /* ── 트랙 그리기 ─────────────────────────────────────────── */
+    function drawTrack(){
+      GEO=measure();
+      const {kx,ky,sw,rOut,rIn,lw,h,vert}=GEO, f=n=>n.toFixed(2);
+      const xy=p=>`${f(50+p.X*kx)},${f(50+p.Y*ky)}`;          // 픽셀 오프셋 → viewBox 좌표
+      /* 반경 r의 스타디움(직선2+반원2) 경로 — 픽셀 비율 역보정으로 곡선이 정원(正圓)이 된다 */
+      const P=r=>{const rx=r*kx, ry=r*ky;
+        if(vert){ const hy=h*ky;
+          return `M${f(50-rx)} ${f(50-hy)}A${f(rx)} ${f(ry)} 0 0 1 ${f(50+rx)} ${f(50-hy)}`
+               + `L${f(50+rx)} ${f(50+hy)}A${f(rx)} ${f(ry)} 0 0 1 ${f(50-rx)} ${f(50+hy)}Z`; }
+        const hx=h*kx;
+        return `M${f(50+hx)} ${f(50-ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(50+hx)} ${f(50+ry)}`
+             + `L${f(50-hx)} ${f(50+ry)}A${f(rx)} ${f(ry)} 0 0 1 ${f(50-hx)} ${f(50-ry)}Z`;};
+
+      /* 잔디 줄무늬(잔디깎기 자국) — 인필드 안쪽으로 클립 */
+      let bands=''; for(let k=0;k<14;k++) bands+=vert
+        ? `<rect x="0" y="${f(k*100/14)}" width="100" height="${f(100/14+.1)}" fill="${k%2?'#2c7a4b':'#348c57'}"/>`
+        : `<rect y="0" x="${f(k*100/14)}" height="100" width="${f(100/14+.1)}" fill="${k%2?'#2c7a4b':'#348c57'}"/>`;
+      /* 레인 라인 */
+      let lines=''; for(let j=1;j<LANES;j++) lines+=`<path d="${P(rOut-j*lw)}" fill="none" stroke="rgba(255,255,255,.7)" stroke-width=".26"/>`;
+      /* 인계 구역(테이크오버 존) — 결승선 기준 ±ZA. 바통 인계가 허용되는 구간을 그대로 칠한다 */
+      const NZ=16; let zO='',zI='';
+      for(let i=0;i<=NZ;i++){ const t=i/NZ;
+        zO+=xy(curveAt(rOut,-ZA+2*ZA*t))+' ';
+        zI=xy(curveAt(rIn,-ZA+2*ZA*t))+' '+zI; }
+      const zone=`<polygon points="${zO}${zI}" fill="#2f6fd0" opacity=".72"/>`
+        +[-ZA,ZA].map(a=>`<polyline points="${xy(curveAt(rOut,a))} ${xy(curveAt(rIn,a))}" fill="none" stroke="#dbe9ff" stroke-width=".3"/>`).join('');
+      /* 결승선(체커) — 레인을 가로지르는 방사형 띠 */
+      let fin=''; const NC=10, dr=(rOut-rIn)/NC, tw=7;
+      for(let k=0;k<NC;k++){ const r0=rIn+k*dr, r1=r0+dr, a0=tw/(2*r0), a1=tw/(2*r1);
+        fin+=`<polygon points="${xy(curveAt(r0,-a0))} ${xy(curveAt(r0,a0))} ${xy(curveAt(r1,a1))} ${xy(curveAt(r1,-a1))}" fill="${k%2?'#15121f':'#fff'}"/>`; }
+      /* 조명탑 */
+      let tow=''; [0.13,0.37,0.63,0.87].forEach(u=>{const p=orient(ptPx(rOut+sw*0.55,u)), c=xy(p).split(',');
+        tow+=`<circle cx="${c[0]}" cy="${c[1]}" r="3.2" fill="#fff6c8" opacity=".13"/><circle cx="${c[0]}" cy="${c[1]}" r="1.05" fill="#fff8d8" opacity=".95"/>`;});
+      /* 인필드 축구장 마킹 */
+      const pw=(vert?rIn*0.6:(h+rIn)*0.58)*kx, ph=(vert?(h+rIn)*0.58:rIn*0.6)*ky, cr=rIn*0.16;
+      const pitch=`<g fill="none" stroke="rgba(255,255,255,.3)" stroke-width=".24">
+        <rect x="${f(50-pw)}" y="${f(50-ph)}" width="${f(pw*2)}" height="${f(ph*2)}"/>
+        ${vert?`<line x1="${f(50-pw)}" y1="50" x2="${f(50+pw)}" y2="50"/>`
+              :`<line x1="50" y1="${f(50-ph)}" x2="50" y2="${f(50+ph)}"/>`}
+        <ellipse cx="50" cy="50" rx="${f(cr*kx)}" ry="${f(cr*ky)}"/></g>`;
+
+      svg.innerHTML=`<defs><clipPath id="rlClipIF"><path d="${P(rIn)}"/></clipPath></defs>
+        <rect x="0" y="0" width="100" height="100" fill="#1d2a33"/>
+        <path d="${P(rOut+sw)}" fill="#39404f"/>
+        <path d="${P(rOut+sw*0.55)}" fill="#565f75"/>
+        <path d="${P(rOut+sw*0.55)}" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="${f(sw*0.42*ky)}" stroke-dasharray=".9 1.3"/>
+        <path d="${P(rOut)}" fill="#b3492c"/>
+        <path d="${P(rIn)}" fill="#2f7d4f"/>
+        <g clip-path="url(#rlClipIF)">${bands}</g>
+        ${pitch}
+        ${zone}
+        ${lines}
+        <path d="${P(rOut)}" fill="none" stroke="rgba(255,255,255,.85)" stroke-width=".34"/>
+        <path d="${P(rIn)}" fill="none" stroke="#fff" stroke-width=".5"/>
+        ${fin}${tow}`;
+
+      /* 결승 테이프를 결승선 위·트랙 폭에 맞춤 */
+      const c=curveAt((rOut+rIn)/2,0);
+      ribbon.style.left=f(50+c.X*kx)+'%'; ribbon.style.top=f(50+c.Y*ky)+'%';
+      ribbon.style.width=((rOut-rIn)*1.06).toFixed(1)+'px';
+      ribbon.style.setProperty('--rz',vert?'0deg':'90deg');
+    }
+    drawTrack();
+    const onResize=()=>{ if(killed)return; drawTrack(); TEAMS.forEach(positionTeam); };
+    window.addEventListener('resize',onResize);
+    cleanups.push(()=>window.removeEventListener('resize',onResize));
 
     /* 얼굴(트랙 슬롯 + 좌상단 초상) — 주자 교체 시에만 재생성 */
     function refresh(g){
@@ -370,16 +458,19 @@
     function positionTeam(g){
       const s=T[g], u=s.finished?1:s.u, p=pt(g,u), p2=pt(g,u+0.01);
       const c=curEl[g]; c.style.left=p.x+'%'; c.style.top=p.y+'%';
-      c.classList.toggle('flip',p2.x>p.x); c.style.zIndex=200+((p.y*10)|0);
+      /* 직선 구간에서는 x 변화가 없으므로 진행 방향이 뚜렷할 때만 좌우 반전을 갱신 */
+      if(Math.abs(p2.x-p.x)>0.08) c.classList.toggle('flip',p2.x>p.x);
+      c.style.zIndex=200+((p.y*10)|0);
       const n=nxtEl[g];
       if(s.nextSpawned && s.leg+1<R && !s.finished){ const q=pt(g,s.nu),q2=pt(g,s.nu+0.01);
         n.style.display='block'; n.style.left=q.x+'%'; n.style.top=q.y+'%';
-        n.classList.toggle('flip',q2.x>q.x); n.style.zIndex=200+((q.y*10)|0); }
+        if(Math.abs(q2.x-q.x)>0.08) n.classList.toggle('flip',q2.x>q.x);
+        n.style.zIndex=200+((q.y*10)|0); }
       else n.style.display='none';
     }
 
     /* 상태 */
-    let started=false, ended=false, place=0, lastFoot=null, handedOff=false,
+    let started=false, ended=false, place=0, lastFoot=null, handedOff=false, cheer=0,
         prevOrder=TEAMS.slice(), firstRank=true, lastOT=0, bq=[], bShow=false, last=performance.now();
 
     /* 바통 인계 완료: 다음 주자가 현재 주자가 됨 */
@@ -415,6 +506,11 @@
       if(s.leg<MY){ if(s.nextSpawned&&s.handoff==='touch'){ completeHandoff(mg); toast('🎽 바통 받기!'); } }
       else if(s.leg===MY){ if(s.nextSpawned&&s.canTouch&&s.handoff==null){ s.handoff='touch'; s.htAt=performance.now(); toast('🎽 바통 터치!'); } }
     });
+
+    /* 응원 — 내가 달리지 않는 구간에 연타하면 우리 팀 봇 주자가 빨라진다(최대 +22%) */
+    cheerBtn.addEventListener('pointerdown',e=>{ e.preventDefault();
+      if(!started||ended)return; cheer=Math.min(1,cheer+0.08); vib(6);
+      cheerBtn.classList.remove('pump'); void cheerBtn.offsetWidth; cheerBtn.classList.add('pump'); });
 
     /* 카운트다운 → 출발 */
     (function countdown(){ let n=3; countEl.classList.add('on'); countEl.textContent=n;
@@ -461,12 +557,13 @@
     ov.loop(t=>{
       if(killed)return;
       const dt=Math.min(.05,(t-last)/1000); last=t;
+      cheer=Math.max(0,cheer-0.5*dt);
       if(started&&!ended){
         TEAMS.forEach(g=>{
           const s=T[g]; if(s.finished)return;
           const humanRun=(g===mg&&s.leg===MY&&s.received);
           if(humanRun) s.u=Math.min(1,s.steps/STEPS);
-          else s.u=Math.min(1,s.u+s.speed*dt*(0.8+Math.random()*0.4));
+          else s.u=Math.min(1,s.u+s.speed*dt*(0.8+Math.random()*0.4)*(g===mg?1+0.22*cheer:1));
           if(s.leg===R-1&&s.u>=1){ s.finished=true; s.u=1; place++; s.rank=place; s.lapEvent=true; refresh(g);
             if(place===1)endRace(g); return; }
           if(s.leg<R-1&&!s.nextSpawned&&s.u>=SPAWN){ s.nextSpawned=true; s.nu=0; s.handoff=null; refresh(g); }
@@ -508,11 +605,14 @@
       if(phase==='receive'){ act.hidden=false; act.textContent='🎽 바통 받기!'; act.classList.toggle('ready',s.handoff==='touch'); }
       else if(phase==='handoff'){ act.hidden=false; act.textContent='🎽 바통 터치!'; act.classList.toggle('ready',s.canTouch&&s.handoff==null); }
       else act.hidden=true;
-      hint.textContent = phase==='wait'?'앞 주자가 달리는 중… 곧 내 차례!'
+      const canCheer=(phase==='wait'||phase==='spectate');
+      cheerBtn.hidden=!canCheer;
+      if(canCheer) gauge.style.width=(cheer*100).toFixed(0)+'%';
+      hint.textContent = phase==='wait'?'앞 주자가 달리는 중 — 연타로 응원하면 더 빨라져요!'
         : phase==='receive'?'천천히 준비 주행 중 — 바통을 받으세요'
         : phase==='run'?'왼발·오른발 번갈아 질주!'
         : phase==='handoff'?'다음 주자에게 바통을 넘기세요'
-        : phase==='spectate'?'바통 인계 완료 — 우리 팀을 응원하세요'
+        : phase==='spectate'?'바통 인계 완료 — 연타로 우리 팀을 응원하세요!'
         : phase==='over'?'경기 종료':'4팀이 동시에 출발합니다';
     });
   }
@@ -658,23 +758,32 @@
     @keyframes ttlpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 
     /* 계주(오벌 트랙) */
-    .rl-arena{position:relative;flex:1;min-height:0;margin:8px 12px;border-radius:18px;overflow:hidden;background:#245c3a;
-      box-shadow:inset 0 0 70px rgba(0,0,0,.4)}
+    .rl-arena{--tilt:26deg;position:relative;flex:1;min-height:0;margin:4px 6px;border-radius:18px;overflow:hidden;background:#1d2a33;
+      box-shadow:inset 0 0 70px rgba(0,0,0,.4);perspective:820px;perspective-origin:50% 42%}
+    /* 트랙 평면 — SVG와 러너를 함께 기울여 % 좌표 정합을 유지한 채 '관중석 시점'을 만든다 */
+    .rl-world{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--tilt)) scale(.93);transform-origin:50% 52%}
     .rl-svg{position:absolute;inset:0;width:100%;height:100%}
-    .rl-runners{position:absolute;inset:0;pointer-events:none}
-    .rl-run{position:absolute;width:30px;height:38px;transform:translate(-50%,-50%);transition:left .12s linear,top .12s linear}
-    .rl-run .gm-ch{width:30px;height:38px}
+    .rl-runners{position:absolute;inset:0;pointer-events:none;transform-style:preserve-3d}
+    /* 러너는 지면에 발을 두고 역회전(빌보드)시켜 세워 둔다 */
+    .rl-run{position:absolute;width:19px;height:24px;transform-origin:50% 100%;
+      transform:translate(-50%,-100%) rotateX(calc(-1 * var(--tilt)));transition:left .1s linear,top .1s linear}
+    .rl-run .gm-ch{width:19px;height:24px}
     .rl-run.flip .gm-ch svg{transform:scaleX(-1)}
     .rl-run.next{opacity:.55}
+    .rl-run.mine .gm-ch{filter:drop-shadow(0 0 3px rgba(255,255,255,.95))}
+    .rl-run.mine::before{content:'▼';position:absolute;left:50%;top:-13px;transform:translateX(-50%);
+      font-size:11px;line-height:1;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.85)}
     .rl-run.hop{animation:rlhop .18s ease}
-    @keyframes rlhop{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-66%)}}
+    @keyframes rlhop{0%,100%{transform:translate(-50%,-100%) rotateX(calc(-1 * var(--tilt)))}
+      50%{transform:translate(-50%,-118%) rotateX(calc(-1 * var(--tilt)))}}
     /* 결승선 띠 */
-    .rl-ribbon{position:absolute;left:50%;top:7%;width:34%;height:16px;transform:translate(-50%,-50%) scaleX(0);transform-origin:center;
+    .rl-ribbon{position:absolute;left:50%;top:7%;height:13px;transform-origin:center;
+      transform:translate(-50%,-50%) rotateX(calc(-1 * var(--tilt))) rotate(var(--rz,0deg)) scaleX(0);
       background:repeating-linear-gradient(45deg,var(--gc,#fff),var(--gc,#fff) 8px,#fff 8px,#fff 16px);
       border-radius:3px;z-index:5;opacity:0;transition:transform .4s ease,opacity .3s;box-shadow:0 2px 8px rgba(0,0,0,.4);
       display:flex;align-items:center;justify-content:center}
-    .rl-ribbon span{font-family:var(--display);font-size:10px;color:#15121f;background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;letter-spacing:1px}
-    .rl-ribbon.on{opacity:1;transform:translate(-50%,-50%) scaleX(1)}
+    .rl-ribbon span{font-family:var(--display);font-size:9px;color:#15121f;background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;letter-spacing:1px}
+    .rl-ribbon.on{opacity:1;transform:translate(-50%,-50%) rotateX(calc(-1 * var(--tilt))) rotate(var(--rz,0deg)) scaleX(1)}
     /* 순위 배너(우→좌) */
     .rl-banner-wrap{position:absolute;left:0;right:0;top:10px;height:36px;overflow:hidden;pointer-events:none;z-index:7}
     .rl-banner{position:absolute;white-space:nowrap;font-family:var(--display);font-size:19px;color:#fff;left:100%;
@@ -683,21 +792,22 @@
     .rl-banner.ot{color:#ffd54a} .rl-banner.lead{color:#7cffb2}
     @keyframes rlbannermove{from{transform:translateX(0)}to{transform:translateX(calc(-100vw - 100%))}}
     /* 좌상단 주자 초상 */
-    .rl-portraits{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:6}
-    .rl-pcard{display:flex;align-items:center;gap:5px;background:rgba(12,10,20,.62);border-left:3px solid var(--gc);
-      border-radius:10px;padding:3px 7px 3px 5px;backdrop-filter:blur(2px)}
-    .rl-pcard.me{box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
-    .rl-ptag{font-family:var(--round);font-size:9px;color:#15121f;padding:1px 5px;border-radius:6px}
+    /* 트랙(특히 좌측 직선)을 가리지 않도록 작고 반투명하게 */
+    .rl-portraits{position:absolute;left:5px;top:6px;display:flex;flex-direction:column;gap:3px;z-index:6}
+    .rl-pcard{display:flex;align-items:center;gap:4px;background:rgba(12,10,20,.46);border-left:2.5px solid var(--gc);
+      border-radius:9px;padding:2px 5px 2px 4px;backdrop-filter:blur(2px)}
+    .rl-pcard.me{background:rgba(12,10,20,.68);box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
+    .rl-ptag{font-family:var(--round);font-size:8px;color:#15121f;padding:1px 4px;border-radius:5px}
     .rl-pruns{display:flex;flex-direction:column;gap:1px}
-    .rl-prow{display:flex;align-items:center;gap:3px}
+    .rl-prow{display:flex;align-items:center;gap:2px}
     .rl-prow.next{opacity:.5}
-    .rl-pav{width:20px;height:24px;overflow:hidden}
-    .rl-pav .gm-ch{width:20px;height:24px}
-    .rl-pnm{font-family:var(--round);font-size:10px;color:#fff;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .rl-pav{width:17px;height:20px;overflow:hidden}
+    .rl-pav .gm-ch{width:17px;height:20px}
+    .rl-pnm{font-family:var(--round);font-size:9px;color:#fff;max-width:42px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     /* 우상단 순위표 */
-    .rl-rank{position:absolute;right:8px;top:8px;width:78px;height:104px;z-index:6}
-    .rl-rankrow{position:absolute;left:0;right:0;height:24px;display:flex;align-items:center;gap:5px;
-      background:rgba(12,10,20,.62);border-radius:9px;padding:0 7px;transition:transform .4s cubic-bezier(.4,1.4,.5,1);backdrop-filter:blur(2px)}
+    .rl-rank{position:absolute;right:6px;top:6px;width:68px;height:92px;z-index:6}
+    .rl-rankrow{position:absolute;left:0;right:0;height:21px;display:flex;align-items:center;gap:4px;
+      background:rgba(12,10,20,.55);border-radius:8px;padding:0 6px;transition:transform .4s cubic-bezier(.4,1.4,.5,1);backdrop-filter:blur(2px)}
     .rl-rankrow.me{box-shadow:0 0 0 1.5px rgba(255,255,255,.5)}
     .rl-rankrow.lead{background:rgba(255,213,74,.22)}
     .rl-rkpos{font-family:var(--display);font-size:14px;color:#fff;min-width:14px;text-align:center}
@@ -718,6 +828,15 @@
     .rl-act.ready{animation:rlactpulse .7s ease infinite alternate}
     .rl-act.ready:active{transform:scale(.97)}
     @keyframes rlactpulse{from{transform:scale(1)}to{transform:scale(1.03)}}
+    /* 응원 버튼(내 차례가 아닐 때) */
+    .rl-cheer{position:relative;border:none;border-radius:18px;padding:13px 14px 17px;cursor:pointer;user-select:none;overflow:hidden;
+      font-family:var(--display);font-size:20px;color:#0d2b1d;background:linear-gradient(100deg,#8bffbe,#48d69b);
+      box-shadow:0 8px 20px -8px rgba(0,0,0,.5);transition:transform .06s}
+    .rl-cheer:active{transform:scale(.97)}
+    .rl-cheer i{position:absolute;left:12px;right:12px;bottom:7px;height:4px;border-radius:3px;background:rgba(0,0,0,.2);display:block}
+    .rl-cheer i b{display:block;height:100%;width:0;border-radius:3px;background:#0d2b1d;transition:width .12s linear}
+    .rl-cheer.pump{animation:rlpump .18s ease}
+    @keyframes rlpump{50%{transform:scale(1.04)}}
     .rl-feet{display:flex;gap:12px}
     .rl-ftbtn{flex:1;border:none;border-radius:20px;padding:22px 0;cursor:pointer;user-select:none;
       font-family:var(--round);font-size:32px;color:#221206;background:linear-gradient(100deg,var(--hot),var(--hot2));
