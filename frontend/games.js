@@ -33,107 +33,223 @@
   }
   const scaledChar=c=>`<div class="gm-ch">${buildChar(c)}</div>`;
 
-  /* ===================== ① 줄다리기 ===================== */
+  /* ===================== ① 줄다리기 토너먼트 ===================== */
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  // requestAnimationFrame 러너(단계마다 stop 가능, 오버레이 닫히면 자동 종료)
+  function animate(root,fn){
+    let alive=true, last=performance.now(), id=0;
+    const step=t=>{ if(!alive||!root.isConnected)return; const dt=Math.min(.05,(t-last)/1000); last=t; fn(dt,t); if(alive)id=requestAnimationFrame(step); };
+    id=requestAnimationFrame(step);
+    return ()=>{alive=false; if(id)cancelAnimationFrame(id);};
+  }
+
   function startTug(){
     if(!me){toast('먼저 캐릭터를 만들어주세요');return;}
     const ov=overlay(), mg=myGen();
-    // 팀 상태: taps=누적 연타, avg=1인당 평균
-    const T={}; TEAMS.forEach(g=>T[g]={taps:0,avg:0,rate:0.92+Math.random()*0.16});
-    let myTaps=0, knot=0.5, target=0.5, tLeft=20, running=true, ended=false;
-    const HUMAN=1.4; // 솔로 데모 응원 가중치(연타가 판세에 체감되도록)
+    let killed=false; const _close=ov.close; ov.close=()=>{killed=true;_close();};
+
+    // 랜덤 대진표: 준결승 2경기 → 결승 (NBA 플레이오프식)
+    const draw=shuffle(TEAMS);
+    const semis=[[draw[0],draw[1]],[draw[2],draw[3]]];
+    const bracket={winners:[null,null],champion:null};
 
     ov.root.innerHTML=`
       <div class="gm-top">
-        <div class="gm-title">🪢 줄다리기</div>
-        <div class="gm-status" id="tgStatus">준비…</div>
+        <div class="gm-title">🪢 줄다리기 토너먼트</div>
+        <div class="gm-status" id="tgStatus">대진 추첨…</div>
         <button class="btn gm-close" id="tgClose">✕</button>
       </div>
-      <div class="gm-stand" id="tgStand"></div>
-      <div class="tg-arena" id="tgArena">
-        <div class="tg-center"></div>
-        <div class="tg-rope"></div>
-        <div class="tg-side left" id="tgL"></div>
-        <div class="tg-side right" id="tgR"></div>
-        <div class="tg-knot" id="tgKnot">🚩</div>
-        <div class="gm-result" id="tgResult"></div>
-      </div>
-      <div class="tg-foot">
-        <div class="tg-mine">내 연타 <b id="tgMy">0</b></div>
-        <button class="tg-mash" id="tgMash" style="--tc:${GENC[mg]}">연타!<small>${GEN[mg]} 힘내라!</small></button>
-      </div>`;
+      <div class="tg-bracket" id="tgBracket"></div>
+      <div class="tg-stage" id="tgStage"></div>`;
     ov.root.querySelector('#tgClose').onclick=ov.close;
+    const stageEl=ov.root.querySelector('#tgStage');
+    const statusEl=ov.root.querySelector('#tgStatus');
 
-    // 양측 캐릭터: 내 팀(왼쪽) vs 최다 인원 상대(오른쪽, 연출용)
-    const rivalGen=TEAMS.filter(g=>g!==mg).sort((a,b)=>MEMBERS[b]-MEMBERS[a])[0];
-    const mine=teamChars(mg,4,true), rivals=teamChars(rivalGen,4,false);
-    ov.root.querySelector('#tgL').innerHTML=mine.map(scaledChar).join('');
-    ov.root.querySelector('#tgR').innerHTML=rivals.map(c=>`<div class="gm-ch flip">${buildChar(c)}</div>`).join('');
+    function renderBracket(active){
+      const cell=g=> g==null
+        ? `<div class="brc empty">?</div>`
+        : `<div class="brc ${g===mg?'mine':''}" style="--gc:${GENC[g]}"><b style="background:${GENC[g]}">${GEN[g]}</b></div>`;
+      const m=(pair,winner,live)=>`<div class="brmatch ${live?'live':''}">
+        <div class="brc-wrap ${winner!=null&&winner===pair[0]?'won':(winner!=null?'lost':'')}">${cell(pair[0])}</div>
+        <div class="brc-wrap ${winner!=null&&winner===pair[1]?'won':(winner!=null?'lost':'')}">${cell(pair[1])}</div></div>`;
+      ov.root.querySelector('#tgBracket').innerHTML=`
+        <div class="brcol">
+          ${m(semis[0],bracket.winners[0],active==='s0')}
+          ${m(semis[1],bracket.winners[1],active==='s1')}
+        </div>
+        <div class="brline"></div>
+        <div class="brcol">
+          ${m([bracket.winners[0],bracket.winners[1]],bracket.champion,active==='f')}
+        </div>
+        <div class="brtrophy ${bracket.champion?'on':''}" style="--gc:${bracket.champion?GENC[bracket.champion]:'#8a7fb0'}">🏆</div>`;
+    }
+    renderBracket();
 
-    const stand=ov.root.querySelector('#tgStand');
-    stand.innerHTML=TEAMS.map(g=>`
-      <div class="gm-row">
-        <span class="gm-tag" style="background:${GENC[g]}">${GEN[g]}</span>
-        <div class="gm-bar"><div class="gm-fill" id="tgFill${g}" style="background:${GENC[g]}"></div></div>
-        <b class="gm-num" id="tgAvg${g}">0</b>
-      </div>`).join('');
+    run();
+    async function run(){
+      statusEl.textContent='대진표 확인!';
+      await wait(1100); if(killed)return;
+      const w0=await match(semis[0][0],semis[0][1],'s0'); if(killed)return;
+      bracket.winners[0]=w0; renderBracket();
+      await wait(700); if(killed)return;
+      const w1=await match(semis[1][0],semis[1][1],'s1'); if(killed)return;
+      bracket.winners[1]=w1; renderBracket();
+      await wait(700); if(killed)return;
+      const champ=await match(w0,w1,'f'); if(killed)return;
+      bracket.champion=champ; renderBracket();
+      await wait(500); if(killed)return;
+      champion(champ);
+    }
 
-    const mash=ov.root.querySelector('#tgMash');
-    const my$=ov.root.querySelector('#tgMy');
-    mash.addEventListener('pointerdown',e=>{
-      e.preventDefault(); if(!running)return;
-      myTaps++; T[mg].taps+=HUMAN; my$.textContent=myTaps;
-      mash.classList.remove('hit'); void mash.offsetWidth; mash.classList.add('hit');
-      vib(12); flick(e);
-    });
-    function flick(e){ const a=ov.root.querySelector('#tgArena'); const s=document.createElement('div');
-      s.className='tg-plus'; s.textContent='+1';
-      s.style.left=(20+Math.random()*60)+'%'; s.style.bottom='8px';
-      a.appendChild(s); setTimeout(()=>s.remove(),620); }
+    // 철권식 VS 인트로
+    function vsIntro(gA,gB){
+      return new Promise(res=>{
+        const v=document.createElement('div'); v.className='tg-vs';
+        v.innerHTML=`<div class="vs-side vs-l" style="--c:${GENC[gA]}"><span>${GEN[gA]}</span></div>
+          <div class="vs-mid">VS</div>
+          <div class="vs-side vs-r" style="--c:${GENC[gB]}"><span>${GEN[gB]}</span></div>`;
+        stageEl.appendChild(v);
+        setTimeout(()=>{ if(!ov.root.isConnected)return res(); v.classList.add('out');
+          setTimeout(()=>{v.remove();res();},380); },1450);
+      });
+    }
 
-    const status=ov.root.querySelector('#tgStatus');
-    let acc=0, last=performance.now();
-    ov.loop(t=>{
-      const dt=Math.min(.05,(t-last)/1000); last=t;
-      if(running){
-        tLeft-=dt; if(tLeft<=0){tLeft=0;running=false;finish();}
-        // 봇: 각 팀 (인원-내1명) 만큼 초당 rate*3.6회 연타 → 평균은 팀 무관 ~동률, 내 팀은 사람이 채움
-        TEAMS.forEach(g=>{ const bots=MEMBERS[g]-(g===mg?1:0);
-          T[g].rate+= (Math.random()-.5)*dt*0.25; T[g].rate=Math.max(.8,Math.min(1.1,T[g].rate));
-          T[g].taps+= bots*3.6*T[g].rate*dt; });
+    // 한 경기: winner 기수를 resolve
+    function match(gA,gB,tag){
+      return new Promise(async resolve=>{
+        renderBracket(tag);
+        const iPlay=(gA===mg||gB===mg);
+        await vsIntro(gA,gB); if(killed)return resolve(gA);
+
+        stageEl.innerHTML=`
+          <div class="tg-arena" id="tgArena">
+            <div class="tg-center"></div>
+            <div class="tg-rope"></div>
+            <div class="tg-badge tg-bl" style="background:${GENC[gA]}">${GEN[gA]}</div>
+            <div class="tg-badge tg-br" style="background:${GENC[gB]}">${GEN[gB]}</div>
+            <div class="tg-side left" id="tgL"></div>
+            <div class="tg-side right" id="tgR"></div>
+            <div class="tg-knot" id="tgKnot">🚩</div>
+            <div class="tg-fanfare" id="tgFanfare"></div>
+          </div>
+          <div class="tg-foot">
+            ${iPlay
+              ? `<div class="tg-mine">내 연타 <b id="tgMy">0</b></div>
+                 <button class="tg-mash" id="tgMash" style="--tc:${GENC[mg]}">연타!<small>${GEN[mg]} 힘내라!</small></button>`
+              : `<div class="tg-spectate">👀 관전 중 · <b style="color:${GENC[gA]}">${GEN[gA]}</b> vs <b style="color:${GENC[gB]}">${GEN[gB]}</b></div>`}
+          </div>`;
+
+        const arena=ov.root.querySelector('#tgArena');
+        const knotEl=ov.root.querySelector('#tgKnot');
+        const L=ov.root.querySelector('#tgL'), Rr=ov.root.querySelector('#tgR');
+        const leftChars=teamChars(gA,4,gA===mg), rightChars=teamChars(gB,4,gB===mg);
+        L.innerHTML=leftChars.map(c=>`<div class="gm-ch">${buildChar(c)}</div>`).join('');
+        Rr.innerHTML=rightChars.map(c=>`<div class="gm-ch flip">${buildChar(c)}</div>`).join('');
+        const cells=[
+          ...[...L.children].map((el,i)=>({el,char:leftChars[i],side:'L'})),
+          ...[...Rr.children].map((el,i)=>({el,char:rightChars[i],side:'R'})),
+        ];
+        function setExpr(cell,ex){ if(!ov.root.isConnected)return; cell.el.innerHTML=buildChar(cell.char,ex); }
+        // 이따금 힘든 표정으로 바뀌었다 돌아옴
+        function sprinkleStrain(){
+          const n=1+Math.floor(Math.random()*2);
+          for(let k=0;k<n;k++){ const cell=cells[Math.floor(Math.random()*cells.length)];
+            if(cell._busy)continue; cell._busy=true;
+            setExpr(cell,'strain'); cell.el.classList.add('grit');
+            setTimeout(()=>{ if(ov.root.isConnected){setExpr(cell,'normal');cell.el.classList.remove('grit');} cell._busy=false; },500+Math.random()*400);
+          }
+        }
+
+        const memL=MEMBERS[gA], memR=MEMBERS[gB];
+        let tapsL=0,tapsR=0,myTaps=0, frac=0.5, knot=0.5, tLeft=iPlay?15:6, running=true, strainAcc=0, stAcc=0;
+        const rate={l:0.95,r:0.95};
+        const HUMAN=4.2;                       // 솔로 데모: 내 연타 1회의 팀 기여 가중치
+        // 관전 경기는 미리 살짝 편향을 줘 승부가 자연스럽게 갈리게
+        const bias = iPlay ? {l:1,r:1} : (Math.random()<0.5?{l:1.09,r:0.93}:{l:0.93,r:1.09});
+
+        if(iPlay){
+          const mash=ov.root.querySelector('#tgMash'), myEl=ov.root.querySelector('#tgMy');
+          mash.addEventListener('pointerdown',e=>{ e.preventDefault(); if(!running)return;
+            myTaps++; if(gA===mg)tapsL+=HUMAN; else tapsR+=HUMAN; myEl.textContent=myTaps;
+            mash.classList.remove('hit'); void mash.offsetWidth; mash.classList.add('hit'); vib(12);
+            const s=document.createElement('div'); s.className='tg-plus'; s.textContent='+1';
+            s.style.left=(gA===mg?15+Math.random()*25:60+Math.random()*25)+'%'; s.style.bottom='10px';
+            arena.appendChild(s); setTimeout(()=>s.remove(),620);
+          });
+        }
+
+        const stop=animate(ov.root,dt=>{
+          if(running){
+            tLeft-=dt; if(tLeft<=0){tLeft=0;running=false;stop();finish();return;}
+            rate.l=clamp(rate.l+(Math.random()-.5)*dt*0.3,.8,1.15);
+            rate.r=clamp(rate.r+(Math.random()-.5)*dt*0.3,.8,1.15);
+            const botL=memL-(gA===mg?1:0), botR=memR-(gB===mg?1:0);
+            tapsL+=botL*3.6*rate.l*bias.l*dt;
+            tapsR+=botR*3.6*rate.r*bias.r*dt;
+            strainAcc+=dt; if(strainAcc>1.3){strainAcc=0;sprinkleStrain();}
+          }
+          const avgL=tapsL/memL, avgR=tapsR/memR;
+          frac=(avgL+avgR>0)?avgL/(avgL+avgR):0.5;
+          knot+=(frac-knot)*Math.min(1,dt*4);
+          arena.style.setProperty('--pull',(knot-0.5).toFixed(3));
+          knotEl.style.left=((1-knot)*100)+'%';
+          if(running){ stAcc+=dt; if(stAcc>.2){stAcc=0;
+            const lead = avgL>avgR?gA:gB;
+            const name = tag==='f'?'결승':(tag==='s0'?'준결승 1':'준결승 2');
+            statusEl.textContent=`${name} · ${Math.ceil(tLeft)}초 · 우세 ${GEN[lead]}`; } }
+        });
+
+        function finish(){
+          const avgL=tapsL/memL, avgR=tapsR/memR;
+          const win = avgL>=avgR?gA:gB, winSide = win===gA?'L':'R';
+          statusEl.textContent = win===mg?'🎉 승리!':`${GEN[win]} 승리`;
+          // 승팀 환호 점프 / 패팀 엎드려 아쉬워함
+          cells.forEach(cell=>{ const won=cell.side===winSide;
+            setExpr(cell,won?'cheer':'sad'); cell.el.classList.remove('grit');
+            cell.el.classList.add(won?'cheer':'sad'); });
+          knotEl.style.left=(winSide==='L'?4:96)+'%';
+          fanfare(ov.root.querySelector('#tgFanfare'),GENC[win]);
+          if(win===mg)vib([20,60,20]);
+          setTimeout(()=>{ if(!killed)resolve(win); }, tag==='f'?1500:1300);
+        }
+      });
+    }
+
+    // 최종 우승 세리머니: 트로피 들어올리기 + 칭호 지급
+    function champion(g){
+      const isMine=(g===mg);
+      const champs=teamChars(g,5,isMine);
+      stageEl.innerHTML=`
+        <div class="tg-champ">
+          <div class="tg-fanfare" id="tgCF"></div>
+          <div class="champ-title" style="color:${GENC[g]}">🏆 ${GEN[g]} 우승!</div>
+          <div class="champ-row">${champs.map((c,i)=>
+            `<div class="gm-ch champ-ch ${i===2?'lift':''}">${i===2?'<div class="champ-trophy">🏆</div>':''}${buildChar(c,'cheer')}</div>`).join('')}</div>
+          <div class="champ-sub">${isMine?'우리 팀이 정상에 올랐어요! 🎊':GEN[g]+' 팀이 우승을 차지했어요'}</div>
+          ${isMine?`<div class="champ-badge">🪢 <b>줄다리기의 달인</b> 칭호 획득!</div>`:''}
+          <div class="gm-ract"><button class="btn hot" id="tgAgain">다시</button><button class="btn" id="tgDone">닫기</button></div>
+        </div>`;
+      statusEl.textContent='토너먼트 종료';
+      fanfare(ov.root.querySelector('#tgCF'),GENC[g],true);
+      if(isMine){ toast('🏆 우리 팀 우승! 「줄다리기의 달인」 획득'); if(typeof awardTitle==='function')awardTitle('줄다리기의 달인'); }
+      ov.root.querySelector('#tgAgain').onclick=()=>{ov.close();startTug();};
+      ov.root.querySelector('#tgDone').onclick=ov.close;
+    }
+
+    // 팡파레 색종이
+    function fanfare(host,color,big){
+      if(!host)return;
+      const N=big?40:22;
+      for(let i=0;i<N;i++){ const p=document.createElement('div'); p.className='confetti';
+        p.style.left=Math.random()*100+'%';
+        p.style.background=[color,'#ffd54a','#ff7a59','#8b8bff','#2ec4b6'][i%5];
+        p.style.animationDelay=(Math.random()*0.5)+'s';
+        p.style.animationDuration=(0.9+Math.random()*0.8)+'s';
+        p.style.setProperty('--dx',(Math.random()*60-30)+'px');
+        host.appendChild(p); setTimeout(()=>p.remove(),2200);
       }
-      TEAMS.forEach(g=>T[g].avg=T[g].taps/MEMBERS[g]);
-      const maxAvg=Math.max(1,...TEAMS.map(g=>T[g].avg));
-      TEAMS.forEach(g=>{ ov.root.querySelector('#tgFill'+g).style.width=(T[g].avg/maxAvg*100)+'%';
-        ov.root.querySelector('#tgAvg'+g).textContent=T[g].avg.toFixed(0); });
-      // 밧줄: 내 팀 평균 vs 최강 상대 평균 비율
-      const rivalAvg=Math.max(...TEAMS.filter(g=>g!==mg).map(g=>T[g].avg));
-      const myAvg=T[mg].avg;
-      target=myAvg+rivalAvg>0? myAvg/(myAvg+rivalAvg):0.5;
-      knot+=(target-knot)*Math.min(1,dt*4);
-      // 왼쪽(내 팀)이 이기면 매듭이 왼쪽으로: pos 0.5=중앙, 크면 왼쪽
-      const kx=(1-knot)*100; // knot 0→오른쪽(100%), 1→왼쪽(0%)
-      ov.root.querySelector('#tgKnot').style.left=kx+'%';
-      ov.root.querySelector('#tgArena').style.setProperty('--pull',(knot-0.5).toFixed(3));
-      if(running){ acc+=dt; if(acc>.2){acc=0;
-        const lead=TEAMS.slice().sort((a,b)=>T[b].avg-T[a].avg)[0];
-        status.textContent=`${Math.ceil(tLeft)}초 · 선두 ${GEN[lead]}`; } }
-    });
-    function finish(){
-      ended=true;
-      const rank=TEAMS.slice().sort((a,b)=>T[b].avg-T[a].avg);
-      const win=rank[0], mine=rank.indexOf(mg)+1;
-      status.textContent='종료';
-      const r=ov.root.querySelector('#tgResult');
-      r.innerHTML=`<div class="gm-rcard">
-        <div class="gm-rwin" style="color:${GENC[win]}">🏆 ${GEN[win]} 우승!</div>
-        <div class="gm-rsub">${GEN[win]} 평균 ${T[win].avg.toFixed(1)}회 · 우리 팀(${GEN[mg]}) ${mine}위 · 내 연타 ${myTaps}회</div>
-        <div class="gm-rrow">${rank.map((g,i)=>`<span class="gm-rpill" style="border-color:${GENC[g]}">${i+1}. ${GEN[g]} ${T[g].avg.toFixed(0)}</span>`).join('')}</div>
-        <div class="gm-ract"><button class="btn hot" id="tgAgain">다시</button><button class="btn" id="tgDone">닫기</button></div>
-      </div>`;
-      r.classList.add('on');
-      r.querySelector('#tgAgain').onclick=()=>{ov.close();startTug();};
-      r.querySelector('#tgDone').onclick=ov.close;
-      if(win===mg)toast('🎉 우리 팀 우승!');
     }
   }
 
@@ -301,26 +417,84 @@
     .gm-ract{display:flex;gap:8px;justify-content:center;margin-top:6px}
     .gm-ract .btn{padding:11px 20px;font-size:15px}
 
-    /* 줄다리기 */
+    /* 줄다리기 토너먼트 */
+    .tg-stage{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+    /* 대진표 */
+    .tg-bracket{display:flex;align-items:center;gap:6px;padding:8px 16px 2px;justify-content:center}
+    .brcol{display:flex;flex-direction:column;gap:8px}
+    .brmatch{display:flex;flex-direction:column;gap:3px;padding:4px;border-radius:10px;border:1.5px solid #2f2947;background:#1b1730;transition:.2s}
+    .brmatch.live{border-color:var(--hot);box-shadow:0 0 12px -2px rgba(255,122,89,.6)}
+    .brc-wrap{transition:.3s}
+    .brc-wrap.lost{opacity:.32;filter:grayscale(.6)}
+    .brc-wrap.won .brc{box-shadow:0 0 0 2px #ffd54a inset}
+    .brc{display:flex;align-items:center;justify-content:center;min-width:44px;height:22px;border-radius:7px;background:#241f37}
+    .brc b{font-family:var(--round);font-size:11px;color:#15121f;padding:2px 8px;border-radius:6px;font-weight:700}
+    .brc.empty{color:var(--mut);font-family:var(--round);font-size:13px}
+    .brc.mine{outline:1.5px dashed rgba(255,122,89,.8);outline-offset:1px}
+    .brline{width:16px;height:2px;background:#3a3352}
+    .brtrophy{font-size:26px;filter:grayscale(1) opacity(.4);transition:.4s}
+    .brtrophy.on{filter:drop-shadow(0 0 8px var(--gc));transform:scale(1.15)}
+    /* VS 인트로 */
+    .tg-vs{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;overflow:hidden;
+      background:radial-gradient(circle at 50% 50%,rgba(0,0,0,.5),rgba(0,0,0,.85))}
+    .tg-vs.out{animation:vsout .38s ease forwards}
+    @keyframes vsout{to{opacity:0;transform:scale(1.1)}}
+    .vs-side{flex:1;display:flex;align-items:center;font-family:var(--display);font-size:min(15vw,64px);color:#fff;
+      height:38%;background:linear-gradient(90deg,var(--c),transparent);text-shadow:0 4px 12px rgba(0,0,0,.6)}
+    .vs-side.vs-l{justify-content:flex-start;padding-left:8%;animation:vsl .5s cubic-bezier(.2,1.3,.4,1)}
+    .vs-side.vs-r{justify-content:flex-end;padding-right:8%;background:linear-gradient(270deg,var(--c),transparent);animation:vsr .5s cubic-bezier(.2,1.3,.4,1)}
+    @keyframes vsl{from{transform:translateX(-120%)}to{transform:translateX(0)}}
+    @keyframes vsr{from{transform:translateX(120%)}to{transform:translateX(0)}}
+    .vs-mid{position:absolute;font-family:var(--display);font-size:min(16vw,72px);color:#ffd54a;z-index:2;
+      text-shadow:0 0 18px rgba(255,120,60,.9),0 4px 8px rgba(0,0,0,.7);animation:vsmid .6s cubic-bezier(.2,1.6,.4,1)}
+    @keyframes vsmid{0%{transform:scale(0) rotate(-25deg);opacity:0}60%{transform:scale(1.3) rotate(8deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+    /* 아레나 */
     .tg-arena{position:relative;flex:1;min-height:0;margin:8px 12px;border-radius:18px;overflow:hidden;
       background:linear-gradient(180deg,#3a7a55,#2a5c42);box-shadow:inset 0 0 80px rgba(0,0,0,.4)}
     .tg-center{position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.25);transform:translateX(-50%)}
     .tg-rope{position:absolute;left:4%;right:4%;top:50%;height:7px;transform:translateY(-50%);border-radius:4px;
       background:repeating-linear-gradient(90deg,#d9a55b,#d9a55b 8px,#b5843f 8px,#b5843f 16px);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+    .tg-badge{position:absolute;top:10px;font-family:var(--round);font-size:12px;font-weight:700;color:#15121f;padding:3px 10px;border-radius:10px;z-index:5}
+    .tg-badge.tg-bl{left:12px} .tg-badge.tg-br{right:12px}
     .tg-knot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:30px;transition:left .12s linear;z-index:4;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5))}
-    .tg-side{position:absolute;top:50%;transform:translateY(-50%);display:flex;gap:-8px;z-index:3}
+    .tg-side{position:absolute;top:50%;display:flex;gap:-8px;z-index:3;
+      transform:translateY(-50%) translateX(calc(var(--pull,0) * -16px));transition:transform .12s linear}
     .tg-side.left{left:6%} .tg-side.right{right:6%}
-    .tg-side .gm-ch{margin:0 -10px;width:46px;height:60px}
+    .tg-side .gm-ch{margin:0 -10px;width:46px;height:60px;transition:transform .3s,filter .3s}
+    .gm-ch.grit svg{animation:tgshake .18s ease infinite}
+    @keyframes tgshake{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px)}}
+    .gm-ch.cheer{animation:tgjump .55s ease infinite}
+    @keyframes tgjump{0%,100%{transform:translateY(0)}30%{transform:translateY(-16px)}55%{transform:translateY(-3px)}}
+    .gm-ch.sad{transform:translateY(8px) rotate(4deg)!important;filter:grayscale(.4) brightness(.82)}
+    .gm-ch.sad.flip{transform:translateY(8px) rotate(-4deg)!important}
     .tg-plus{position:absolute;font-family:var(--display);font-size:20px;color:#fff;opacity:.9;pointer-events:none;
       animation:tgup .6s ease forwards;z-index:5}
     @keyframes tgup{from{transform:translateY(0);opacity:.9}to{transform:translateY(-60px);opacity:0}}
+    .tg-fanfare{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
+    .confetti{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;opacity:.95;animation:confall linear forwards}
+    @keyframes confall{to{transform:translate(var(--dx,0),120%) rotate(540deg);opacity:.2}}
     .tg-foot{padding:8px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:8px}
     .tg-mine{font-family:var(--round);font-size:14px;color:var(--mut)} .tg-mine b{color:var(--ink);font-size:18px}
+    .tg-spectate{font-family:var(--round);font-size:15px;color:var(--mut);padding:20px 0}
     .tg-mash{width:100%;max-width:460px;border:none;border-radius:22px;padding:26px;cursor:pointer;user-select:none;
       font-family:var(--display);font-size:32px;color:#fff;background:var(--tc);box-shadow:0 12px 26px -8px rgba(0,0,0,.6);
       display:flex;flex-direction:column;gap:2px;align-items:center;transition:transform .05s}
     .tg-mash small{font-family:var(--round);font-size:13px;opacity:.85;color:#fff}
     .tg-mash.hit{transform:scale(.95)}
+    /* 우승 세리머니 */
+    .tg-champ{flex:1;min-height:0;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;text-align:center}
+    .champ-title{font-family:var(--display);font-size:34px;animation:vsmid .6s cubic-bezier(.2,1.6,.4,1)}
+    .champ-row{display:flex;align-items:flex-end;justify-content:center;gap:2px}
+    .champ-ch{width:56px;height:72px;position:relative}
+    .champ-ch.lift{width:72px;height:92px;animation:liftup 1.1s ease infinite alternate}
+    @keyframes liftup{from{transform:translateY(2px)}to{transform:translateY(-12px)}}
+    .champ-trophy{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:30px;z-index:2;
+      filter:drop-shadow(0 0 8px rgba(255,213,74,.9));animation:trophysh .9s ease infinite alternate}
+    @keyframes trophysh{from{filter:drop-shadow(0 0 5px rgba(255,213,74,.6))}to{filter:drop-shadow(0 0 14px rgba(255,213,74,1))}}
+    .champ-sub{font-family:var(--round);font-size:14px;color:var(--mut)}
+    .champ-badge{font-family:var(--round);font-size:15px;color:#ffd54a;background:rgba(255,213,74,.12);
+      border:1px solid rgba(255,213,74,.4);padding:8px 16px;border-radius:14px;animation:ttlpop .5s ease}
+    @keyframes ttlpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 
     /* 계주 */
     .rl-track{position:relative;flex:1;min-height:0;margin:8px 12px;border-radius:18px;overflow:hidden;
