@@ -67,13 +67,11 @@
         <div class="gm-status" id="tgStatus">대진 추첨…</div>
         <button class="btn gm-close" id="tgClose">✕</button>
       </div>
-      <div class="tg-timer" id="tgTimer"></div>
       <div class="tg-bracket" id="tgBracket"></div>
       <div class="tg-stage" id="tgStage"></div>`;
     ov.root.querySelector('#tgClose').onclick=ov.close;
     const stageEl=ov.root.querySelector('#tgStage');
     const statusEl=ov.root.querySelector('#tgStatus');
-    const timerEl=ov.root.querySelector('#tgTimer');
 
     function renderBracket(active){
       const cell=g=> g==null
@@ -135,6 +133,7 @@
           <div class="tg-arena" id="tgArena">
             <div class="tg-center"></div>
             <div class="tg-rope"></div>
+            <div class="tg-timer" id="tgTimer"></div>
             <div class="tg-badge tg-bl" style="background:${GENC[gA]}">${GEN[gA]}</div>
             <div class="tg-badge tg-br" style="background:${GENC[gB]}">${GEN[gB]}</div>
             <div class="tg-side left" id="tgL"></div>
@@ -151,6 +150,7 @@
 
         const arena=ov.root.querySelector('#tgArena');
         const knotEl=ov.root.querySelector('#tgKnot');
+        const timerEl=ov.root.querySelector('#tgTimer');
         const L=ov.root.querySelector('#tgL'), Rr=ov.root.querySelector('#tgR');
         const leftChars=teamChars(gA,4,gA===mg), rightChars=teamChars(gB,4,gB===mg);
         const usedN=new Set();
