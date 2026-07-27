@@ -962,7 +962,8 @@ function ensureEl(e){
 function tagHTML(e){
   const role=e.role||(e.char&&e.char.role);
   const title=e.title||(e.char&&e.char.title);
-  return `<div class="tag">${title?`<i class="ttl" title="${esc(title)}">🪢 달인</i>`:''}<i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div>`;
+  const badge=title?(title.includes('계주')?'🏃 달인':'🪢 달인'):'';
+  return `<div class="tag">${title?`<i class="ttl" title="${esc(title)}">${badge}</i>`:''}<i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div>`;
 }
 // 종목 우승 등으로 칭호를 부여하고 즉시 반영(저장·이름표·브로드캐스트)
 async function awardTitle(t){

@@ -265,118 +265,256 @@
     }
   }
 
-  /* ===================== ② 팀 계주 ===================== */
+  /* ===================== ② 팀 계주 (오벌 트랙) ===================== */
   function startRelay(){
     if(!me){toast('먼저 캐릭터를 만들어주세요');return;}
     const ov=overlay(), mg=myGen();
-    const R=4;           // 팀당 주자 수(구간 100/R%)
-    const MY_IDX=1;      // 나는 2번째 주자
-    const STEPS=24;      // 내 구간 완주에 필요한 교대 스텝
-    // 팀 상태: seg=현재 주자 index, prog=현재 구간 진행(0~1)
-    // speed는 봇 주자 구간의 자동 전진 속도(내 팀도 내 구간 외에는 봇 주자가 뛴다)
-    const T={}; TEAMS.forEach(g=>T[g]={seg:0,prog:0,speed:0.20+Math.random()*0.10,done:false,rank:0});
-    let lastFoot=null, myDone=false, steps=0, finished=false, place=0;
+    let killed=false; const _close=ov.close; ov.close=()=>{killed=true;_close();};
+    const R=4, MY=1, STEPS=18, SPAWN=0.97, GAP=0.05;   // 4주자·내가 2주자·한바퀴 18스텝
+
+    /* 트랙 기하: 정규화 0~100(SVG preserveAspectRatio=none와 좌표 공유), 팀별 레인 */
+    const RX0=43, RY0=41, dRX=4.2, dRY=4;
+    const laneOf=g=>TEAMS.indexOf(g);
+    const lane=g=>{const i=laneOf(g);return{rx:RX0-i*dRX,ry:RY0-i*dRY};};
+    const pt=(g,u)=>{const{rx,ry}=lane(g);const a=-Math.PI/2-2*Math.PI*u;return{x:50+rx*Math.cos(a),y:50+ry*Math.sin(a)};};
+
+    /* 팀 상태 */
+    const T={};
+    TEAMS.forEach(g=>{
+      const chars=teamChars(g,R,false); if(g===mg)chars[MY]=me;
+      const used=new Set(), myNick=(me&&me.nick)||'나'; if(g===mg)used.add(myNick);
+      const names=chars.map((c,i)=>(g===mg&&i===MY)?myNick:fighterName(c,used));
+      T[g]={chars,names,leg:0,u:0,nu:0,nextSpawned:false,handoff:null,canTouch:false,htAt:0,
+        received:g!==mg,steps:0,speed:0.15+Math.random()*0.05,finished:false,rank:0,lapEvent:false,curShown:-1};
+    });
+
+    /* 트랙 SVG(레인 라인 자동 생성) */
+    const laneLines=[42,38.5,35,31.5,28].map(rx=>`<ellipse cx="50" cy="50" rx="${rx}" ry="${(rx*RY0/RX0).toFixed(2)}"/>`).join('');
+    const trackSVG=`<svg class="rl-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <rect x="0" y="0" width="100" height="100" fill="#2f7d4f"/>
+      <ellipse cx="50" cy="50" rx="46.5" ry="44.3" fill="#347f52"/>
+      <ellipse cx="50" cy="50" rx="45" ry="43" fill="#c8623a"/>
+      <ellipse cx="50" cy="50" rx="45" ry="43" fill="none" stroke="#fff" stroke-width=".45" opacity=".7"/>
+      <g fill="none" stroke="rgba(255,255,255,.4)" stroke-width=".2">${laneLines}</g>
+      <ellipse cx="50" cy="50" rx="26" ry="24.5" fill="#347f52"/>
+      <ellipse cx="50" cy="50" rx="26" ry="24.5" fill="none" stroke="#fff" stroke-width=".4" opacity=".55"/>
+      <ellipse cx="50" cy="50" rx="12" ry="10.5" fill="#c8996a" opacity=".8"/>
+      <rect x="49.2" y="7" width="1.6" height="18" fill="rgba(255,255,255,.9)"/>
+    </svg>`;
 
     ov.root.innerHTML=`
       <div class="gm-top">
         <div class="gm-title">🏃 팀 계주</div>
-        <div class="gm-status" id="rlStatus">출발!</div>
+        <div class="gm-status" id="rlStatus">잠시 후 출발!</div>
         <button class="btn gm-close" id="rlClose">✕</button>
       </div>
-      <div class="gm-stand" id="rlStand"></div>
-      <div class="rl-track" id="rlTrack">
-        <div class="rl-finish">🏁</div>
-        <div class="rl-runner" id="rlRunner">${scaledChar(me)}</div>
-        <div class="rl-turn" id="rlTurn"></div>
+      <div class="rl-arena" id="rlArena">
+        ${trackSVG}
+        <div class="rl-ribbon" id="rlRibbon"><span>FINISH</span></div>
+        <div class="rl-banner-wrap" id="rlBanner"></div>
+        <div class="rl-runners" id="rlRunners">
+          ${TEAMS.map(g=>`<div class="rl-run" id="rlCur${g}"><div class="gm-ch"></div></div>
+            <div class="rl-run next" id="rlNxt${g}"><div class="gm-ch"></div></div>`).join('')}
+        </div>
+        <div class="rl-portraits" id="rlPort">
+          ${TEAMS.map(g=>`<div class="rl-pcard ${g===mg?'me':''}" style="--gc:${GENC[g]}">
+            <span class="rl-ptag" style="background:${GENC[g]}">${GEN[g]}</span>
+            <div class="rl-pruns">
+              <div class="rl-prow"><div class="rl-pav" id="rlPcur${g}"></div><span class="rl-pnm" id="rlPcurN${g}"></span></div>
+              <div class="rl-prow next"><div class="rl-pav" id="rlPnxt${g}"></div><span class="rl-pnm" id="rlPnxtN${g}"></span></div>
+            </div></div>`).join('')}
+        </div>
+        <div class="rl-rank" id="rlRank">
+          ${TEAMS.map(g=>`<div class="rl-rankrow ${g===mg?'me':''}" id="rlRk${g}"><b class="rl-rkpos">–</b><span class="rl-rktag" style="background:${GENC[g]}">${GEN[g]}</span></div>`).join('')}
+        </div>
+        <div class="rl-count" id="rlCount"></div>
         <div class="gm-result" id="rlResult"></div>
       </div>
-      <div class="rl-prog"><div class="rl-progfill" id="rlProgFill" style="background:${GENC[mg]}"></div><span id="rlProgTxt">내 구간 0%</span></div>
       <div class="rl-foot">
-        <button class="rl-ftbtn" id="rlL" disabled>👟<small>왼발</small></button>
-        <button class="rl-ftbtn" id="rlR" disabled>👟<small>오른발</small></button>
+        <button class="rl-act" id="rlAct" hidden></button>
+        <div class="rl-feet">
+          <button class="rl-ftbtn" id="rlL" disabled>👟<small>왼발</small></button>
+          <button class="rl-ftbtn" id="rlR" disabled>👟<small>오른발</small></button>
+        </div>
+        <div class="rl-hint" id="rlHint">4팀이 동시에 출발합니다</div>
       </div>`;
     ov.root.querySelector('#rlClose').onclick=ov.close;
 
-    const stand=ov.root.querySelector('#rlStand');
-    stand.innerHTML=TEAMS.map(g=>`
-      <div class="gm-row ${g===mg?'me':''}">
-        <span class="gm-tag" style="background:${GENC[g]}">${GEN[g]}</span>
-        <div class="gm-bar"><div class="gm-fill" id="rlFill${g}" style="background:${GENC[g]}"></div></div>
-        <b class="gm-num" id="rlSeg${g}">1주자</b>
-      </div>`).join('');
+    const $=id=>ov.root.querySelector(id);
+    const status=$('#rlStatus'), ribbon=$('#rlRibbon'), bannerWrap=$('#rlBanner'),
+          countEl=$('#rlCount'), result=$('#rlResult'),
+          bL=$('#rlL'), bR=$('#rlR'), act=$('#rlAct'), hint=$('#rlHint');
+    const curEl={},nxtEl={},curCh={},nxtCh={},pcur={},pnxt={},pcurN={},pnxtN={},rankRow={};
+    TEAMS.forEach(g=>{
+      curEl[g]=$('#rlCur'+g); nxtEl[g]=$('#rlNxt'+g);
+      curCh[g]=curEl[g].firstElementChild; nxtCh[g]=nxtEl[g].firstElementChild;
+      pcur[g]=$('#rlPcur'+g); pnxt[g]=$('#rlPnxt'+g); pcurN[g]=$('#rlPcurN'+g); pnxtN[g]=$('#rlPnxtN'+g);
+      rankRow[g]=$('#rlRk'+g);
+    });
 
-    const bL=ov.root.querySelector('#rlL'), bR=ov.root.querySelector('#rlR');
-    const runner=ov.root.querySelector('#rlRunner'), turn=ov.root.querySelector('#rlTurn');
-    const status=ov.root.querySelector('#rlStatus');
-    function step(foot){
-      if(!(T[mg].seg===MY_IDX && !myDone && !finished))return;
-      if(lastFoot===foot){ // 같은 발 연속 → 헛디딤
-        (foot==='L'?bL:bR).classList.add('bad'); setTimeout(()=>(foot==='L'?bL:bR).classList.remove('bad'),220);
-        toast('👣 왼발·오른발 번갈아!'); vib([8,40,8]); return;
-      }
-      lastFoot=foot; steps++; vib(10);
-      runner.classList.remove('hop'); void runner.offsetWidth; runner.classList.add('hop');
-      hintFoot();
-      if(steps>=STEPS){ myDone=true; T[mg].prog=1; baton(); }
+    /* 얼굴(트랙 슬롯 + 좌상단 초상) — 주자 교체 시에만 재생성 */
+    function refresh(g){
+      const s=T[g]; if(s.curShown===s.leg)return; s.curShown=s.leg;
+      curCh[g].innerHTML=buildChar(s.chars[s.leg]);
+      pcur[g].innerHTML=buildChar(s.chars[s.leg]); pcurN[g].textContent=s.names[s.leg];
+      const ni=s.leg+1;
+      if(ni<R){ nxtCh[g].innerHTML=buildChar(s.chars[ni]);
+        pnxt[g].innerHTML=buildChar(s.chars[ni]); pnxtN[g].textContent=s.names[ni];
+        pnxt[g].parentElement.style.visibility='visible'; }
+      else { nxtCh[g].innerHTML=''; pnxt[g].innerHTML=''; pnxtN[g].textContent='';
+        pnxt[g].parentElement.style.visibility='hidden'; }
     }
+    TEAMS.forEach(refresh);
+
+    /* 러너 트랙 배치(진행률 → 오벌 좌표) */
+    function positionTeam(g){
+      const s=T[g], u=s.finished?1:s.u, p=pt(g,u), p2=pt(g,u+0.01);
+      const c=curEl[g]; c.style.left=p.x+'%'; c.style.top=p.y+'%';
+      c.classList.toggle('flip',p2.x>p.x); c.style.zIndex=200+((p.y*10)|0);
+      const n=nxtEl[g];
+      if(s.nextSpawned && s.leg+1<R && !s.finished){ const q=pt(g,s.nu),q2=pt(g,s.nu+0.01);
+        n.style.display='block'; n.style.left=q.x+'%'; n.style.top=q.y+'%';
+        n.classList.toggle('flip',q2.x>q.x); n.style.zIndex=200+((q.y*10)|0); }
+      else n.style.display='none';
+    }
+
+    /* 상태 */
+    let started=false, ended=false, place=0, lastFoot=null, handedOff=false,
+        prevOrder=TEAMS.slice(), firstRank=true, lastOT=0, bq=[], bShow=false, last=performance.now();
+
+    /* 바통 인계 완료: 다음 주자가 현재 주자가 됨 */
+    function completeHandoff(g){
+      const s=T[g]; s.leg++; s.u=s.nu; s.nu=0; s.nextSpawned=false; s.handoff=null; s.canTouch=false; s.lapEvent=true;
+      if(g===mg){ if(s.leg===MY){ s.received=true; s.steps=Math.round(s.u*STEPS); lastFoot=null; hintFoot(); }
+        else if(s.leg>MY) handedOff=true; }
+      refresh(g);
+    }
+
+    /* 배너(우→좌) */
+    function banner(text,kind){ bq.push({text,kind}); if(!bShow)nextBanner(); }
+    function nextBanner(){ if(!bq.length){bShow=false;return;} bShow=true; const {text,kind}=bq.shift();
+      const b=document.createElement('div'); b.className='rl-banner '+kind; b.textContent=text;
+      bannerWrap.appendChild(b); setTimeout(()=>{b.remove();nextBanner();},2400); }
+
+    /* 발 버튼 */
+    function step(foot){
+      const s=T[mg];
+      if(!started||ended||handedOff||!(s.leg===MY&&s.received))return;
+      if(lastFoot===foot){ (foot==='L'?bL:bR).classList.add('bad');
+        setTimeout(()=>(foot==='L'?bL:bR).classList.remove('bad'),200); vib([8,30,8]); return; }
+      lastFoot=foot; s.steps++; vib(10);
+      curEl[mg].classList.remove('hop'); void curEl[mg].offsetWidth; curEl[mg].classList.add('hop');
+      hintFoot();
+    }
+    function hintFoot(){ const nx=lastFoot==='L'?'R':(lastFoot==='R'?'L':null);
+      bL.classList.toggle('nextfoot',nx==='L'||nx==null); bR.classList.toggle('nextfoot',nx==='R'||nx==null); }
     bL.addEventListener('pointerdown',e=>{e.preventDefault();step('L');});
     bR.addEventListener('pointerdown',e=>{e.preventDefault();step('R');});
-    function hintFoot(){ const next=lastFoot==='L'?'R':(lastFoot==='R'?'L':null);
-      bL.classList.toggle('next',next==='L'||next===null); bR.classList.toggle('next',next==='R'||next===null); }
-    function baton(){ turn.className='rl-turn show'; turn.textContent='🎽 바통 터치!';
-      setTimeout(()=>turn.className='rl-turn',900); toast('🎽 바통 터치!'); }
-
-    let myTurnShown=false, last=performance.now();
-    ov.loop(t=>{
-      const dt=Math.min(.05,(t-last)/1000); last=t;
-      // 각 팀 진행: 봇 구간은 자동, 내 구간(내 팀 MY_IDX)만 스텝으로
-      TEAMS.forEach(g=>{ const s=T[g]; if(s.done)return;
-        const humanSeg=(g===mg && s.seg===MY_IDX);
-        if(humanSeg){ s.prog=Math.min(1,steps/STEPS); }
-        else { s.prog+=s.speed*dt*(0.9+Math.random()*0.2); }
-        if(s.prog>=1){ s.prog=0; s.seg++; if(g!==mg||s.seg!==MY_IDX){/*봇 구간 이어감*/}
-          if(s.seg>=R){ s.done=true; s.seg=R; if(!s.rank){place++; s.rank=place;} } }
-      });
-      // 내 차례 알림 / 버튼 활성
-      const myTurn=(T[mg].seg===MY_IDX && !myDone && !T[mg].done);
-      bL.disabled=bR.disabled=!myTurn;
-      if(myTurn && !myTurnShown){ myTurnShown=true; turn.className='rl-turn show big'; turn.textContent='🏃 내 차례!';
-        setTimeout(()=>turn.className='rl-turn',1200); vib([15,60,15]); lastFoot=null; hintFoot(); }
-      // 러너 위치(내 구간 진행률로 트랙 좌→우)
-      const seg=T[mg].seg;
-      const p = T[mg].done?1 : (seg<MY_IDX?0.0 : seg>MY_IDX?1.0 : T[mg].prog);
-      runner.style.left=(6+p*80)+'%';
-      runner.classList.toggle('run', myTurn);
-      // 대기 상태 안내
-      if(!myTurn && !myDone && !T[mg].done && seg<MY_IDX){
-        status.textContent=`앞 주자(${seg+1}번) 달리는 중…`;
-      } else if(myTurn){ status.textContent='내 구간 질주!';
-      } else if(T[mg].done){ status.textContent='우리 팀 완주!'; }
-      // 진행바
-      ov.root.querySelector('#rlProgFill').style.width=(p*100)+'%';
-      ov.root.querySelector('#rlProgTxt').textContent = T[mg].done?'완주!':(myTurn?`내 구간 ${(T[mg].prog*100|0)}%`:(seg<MY_IDX?'대기 중':'구간 완료'));
-      // 스탠딩
-      TEAMS.forEach(g=>{ const s=T[g]; const overall=(Math.min(s.seg,R)+ (s.done?0:s.prog))/R;
-        ov.root.querySelector('#rlFill'+g).style.width=(overall*100)+'%';
-        ov.root.querySelector('#rlSeg'+g).textContent = s.done?'완주':`${Math.min(s.seg+1,R)}주자`; });
-      if(!finished && TEAMS.every(g=>T[g].done)) finishRace();
+    act.addEventListener('pointerdown',e=>{ e.preventDefault(); const s=T[mg];
+      if(!started||ended||handedOff)return;
+      if(s.leg<MY){ if(s.nextSpawned&&s.handoff==='touch'){ completeHandoff(mg); toast('🎽 바통 받기!'); } }
+      else if(s.leg===MY){ if(s.nextSpawned&&s.canTouch&&s.handoff==null){ s.handoff='touch'; s.htAt=performance.now(); toast('🎽 바통 터치!'); } }
     });
-    function finishRace(){
-      finished=true; status.textContent='경기 종료';
-      const order=TEAMS.slice().sort((a,b)=>(T[a].rank||9)-(T[b].rank||9));
-      const win=order[0], myPlace=T[mg].rank||order.indexOf(mg)+1;
-      const r=ov.root.querySelector('#rlResult');
-      r.innerHTML=`<div class="gm-rcard">
-        <div class="gm-rwin" style="color:${GENC[win]}">🏆 ${GEN[win]} 우승!</div>
-        <div class="gm-rsub">우리 팀(${GEN[mg]}) ${myPlace}위 · 내 스텝 ${steps}회</div>
-        <div class="gm-rrow">${order.map((g,i)=>`<span class="gm-rpill" style="border-color:${GENC[g]}">${T[g].rank||i+1}. ${GEN[g]}</span>`).join('')}</div>
+
+    /* 카운트다운 → 출발 */
+    (function countdown(){ let n=3; countEl.classList.add('on'); countEl.textContent=n;
+      const tick=()=>{ if(killed)return; n--;
+        if(n>0){ countEl.textContent=n; countEl.classList.remove('pop'); void countEl.offsetWidth; countEl.classList.add('pop'); setTimeout(tick,750); }
+        else { countEl.textContent='출발!'; countEl.classList.add('go');
+          setTimeout(()=>{ if(killed)return; started=true; last=performance.now(); status.textContent='레이스 진행 중';
+            setTimeout(()=>countEl.classList.remove('on'),500); },300); } };
+      setTimeout(tick,750);
+    })();
+
+    /* 결과 */
+    function endRace(win){
+      ended=true; ribbon.classList.remove('on');
+      const key=g=>T[g].finished?(1000-T[g].rank):(T[g].leg+T[g].u);
+      let p=T[win].rank||1; if(!T[win].rank)T[win].rank=1;
+      TEAMS.filter(g=>!T[g].rank).sort((a,b)=>key(b)-key(a)).forEach(g=>{ T[g].rank=++p; });
+      status.textContent='경기 종료';
+      setTimeout(()=>{ if(!killed)showResult(win); },1200);
+    }
+    function confetti(host,color){ if(!host)return;
+      for(let i=0;i<40;i++){ const p=document.createElement('div'); p.className='confetti';
+        p.style.left=Math.random()*100+'%'; p.style.background=[color,'#ffd54a','#ff7a59','#8b8bff','#2ec4b6'][i%5];
+        p.style.animationDelay=(Math.random()*0.5)+'s'; p.style.animationDuration=(0.9+Math.random()*0.8)+'s';
+        p.style.setProperty('--dx',(Math.random()*60-30)+'px'); host.appendChild(p); setTimeout(()=>p.remove(),2200); } }
+    function showResult(win){
+      const mine=(win===mg), order=TEAMS.slice().sort((a,b)=>(T[a].rank||9)-(T[b].rank||9)), champs=teamChars(win,5,mine);
+      result.innerHTML=`<div class="tg-champ">
+        <div class="tg-fanfare" id="rlCF"></div>
+        <div class="champ-title" style="color:${GENC[win]}">🏆 ${GEN[win]} 우승!</div>
+        <div class="champ-row">${champs.map((c,i)=>`<div class="gm-ch champ-ch ${i===2?'lift':''}">${i===2?'<div class="champ-trophy">🏆</div>':''}${buildChar(c,'cheer')}</div>`).join('')}</div>
+        <div class="champ-sub">${mine?'우리 팀이 결승선을 가장 먼저 통과했어요! 🎊':GEN[win]+' 팀이 우승했어요'}</div>
+        ${mine?`<div class="champ-badge">🏃 <b>계주의 달인</b> 칭호 획득!</div>`:''}
+        <div class="gm-rrow">${order.map(g=>`<span class="gm-rpill" style="border-color:${GENC[g]}">${T[g].rank}. ${GEN[g]}${g===mg?' (우리)':''}</span>`).join('')}</div>
         <div class="gm-ract"><button class="btn hot" id="rlAgain">다시</button><button class="btn" id="rlDone">닫기</button></div>
       </div>`;
-      r.classList.add('on');
-      r.querySelector('#rlAgain').onclick=()=>{ov.close();startRelay();};
-      r.querySelector('#rlDone').onclick=ov.close;
-      if(win===mg)toast('🎉 우리 팀 우승!');
+      result.classList.add('on'); confetti($('#rlCF'),GENC[win]);
+      if(mine){ toast('🎉 우리 팀 우승! 「계주의 달인」 획득'); if(typeof awardTitle==='function')awardTitle('계주의 달인'); vib([20,60,20]); }
+      $('#rlAgain').onclick=()=>{ov.close();startRelay();};
+      $('#rlDone').onclick=ov.close;
     }
+
+    /* 메인 루프 */
+    ov.loop(t=>{
+      if(killed)return;
+      const dt=Math.min(.05,(t-last)/1000); last=t;
+      if(started&&!ended){
+        TEAMS.forEach(g=>{
+          const s=T[g]; if(s.finished)return;
+          const humanRun=(g===mg&&s.leg===MY&&s.received);
+          if(humanRun) s.u=Math.min(1,s.steps/STEPS);
+          else s.u=Math.min(1,s.u+s.speed*dt*(0.8+Math.random()*0.4));
+          if(s.leg===R-1&&s.u>=1){ s.finished=true; s.u=1; place++; s.rank=place; s.lapEvent=true; refresh(g);
+            if(place===1)endRace(g); return; }
+          if(s.leg<R-1&&!s.nextSpawned&&s.u>=SPAWN){ s.nextSpawned=true; s.nu=0; s.handoff=null; refresh(g); }
+          if(s.nextSpawned){
+            s.nu=Math.min(1,s.nu+0.5*s.speed*dt);
+            s.canTouch=((1-s.u)+s.nu)<=GAP;
+            const humanCur=(g===mg&&s.leg===MY&&s.received), humanNext=(g===mg&&s.leg===MY-1);
+            if(s.handoff==null&&s.canTouch&&!humanCur){ s.handoff='touch'; s.htAt=t; }
+            if(s.handoff==='touch'&&!humanNext&&t-s.htAt>350) completeHandoff(g);
+          }
+        });
+      }
+      /* 순위 */
+      const key=g=>T[g].finished?(1000-T[g].rank):(T[g].leg+T[g].u);
+      const order=TEAMS.slice().sort((a,b)=>key(b)-key(a));
+      if(started&&!ended){
+        const leader=order[0];
+        if(T[leader].lapEvent) banner(`${GEN[leader]} 선두!`,'lead');
+        TEAMS.forEach(g=>T[g].lapEvent=false);
+        if(firstRank){ firstRank=false; prevOrder=order.slice(); }
+        else { let i=0; while(i<R&&order[i]===prevOrder[i])i++;
+          if(i<R&&t-lastOT>1500){ lastOT=t; banner(`${GEN[order[i]]}가 ${GEN[prevOrder[i]]}를 추월!!`,'ot'); }
+          prevOrder=order.slice(); }
+        ribbon.classList.toggle('on',T[leader].leg===R-1&&!T[leader].finished);
+        if(T[leader].leg===R-1) ribbon.style.setProperty('--gc',GENC[leader]);
+      }
+      order.forEach((g,i)=>{ rankRow[g].style.transform=`translateY(${i*100}%)`;
+        rankRow[g].querySelector('.rl-rkpos').textContent=i+1;
+        rankRow[g].classList.toggle('lead',i===0); });
+      TEAMS.forEach(positionTeam);
+
+      /* 발/버튼 UI */
+      const s=T[mg]; let phase;
+      if(ended)phase='over'; else if(!started)phase='ready'; else if(handedOff)phase='spectate';
+      else if(s.leg<MY)phase=s.nextSpawned?'receive':'wait';
+      else if(s.leg===MY)phase=s.nextSpawned?'handoff':'run';
+      else phase='spectate';
+      bL.disabled=bR.disabled=!(phase==='run'||phase==='handoff');
+      if(phase==='receive'){ act.hidden=false; act.textContent='🎽 바통 받기!'; act.classList.toggle('ready',s.handoff==='touch'); }
+      else if(phase==='handoff'){ act.hidden=false; act.textContent='🎽 바통 터치!'; act.classList.toggle('ready',s.canTouch&&s.handoff==null); }
+      else act.hidden=true;
+      hint.textContent = phase==='wait'?'앞 주자가 달리는 중… 곧 내 차례!'
+        : phase==='receive'?'천천히 준비 주행 중 — 바통을 받으세요'
+        : phase==='run'?'왼발·오른발 번갈아 질주!'
+        : phase==='handoff'?'다음 주자에게 바통을 넘기세요'
+        : phase==='spectate'?'바통 인계 완료 — 우리 팀을 응원하세요'
+        : phase==='over'?'경기 종료':'4팀이 동시에 출발합니다';
+    });
   }
 
   /* ===================== 종목 메뉴 ===================== */
@@ -519,35 +657,74 @@
       border:1px solid rgba(255,213,74,.4);padding:8px 16px;border-radius:14px;animation:ttlpop .5s ease}
     @keyframes ttlpop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
 
-    /* 계주 */
-    .rl-track{position:relative;flex:1;min-height:0;margin:8px 12px;border-radius:18px;overflow:hidden;
-      background:linear-gradient(180deg,#c8623a,#a94e2e);
-      box-shadow:inset 0 0 70px rgba(0,0,0,.35)}
-    .rl-track:before{content:'';position:absolute;inset:0;opacity:.5;
-      background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.15) 60px,rgba(255,255,255,.15) 62px)}
-    .rl-finish{position:absolute;right:4%;top:50%;transform:translateY(-50%);font-size:40px;z-index:2;
-      filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))}
-    .rl-runner{position:absolute;left:6%;top:50%;transform:translate(-50%,-50%);width:64px;height:82px;transition:left .1s linear;z-index:3}
-    .rl-runner .gm-ch{width:64px;height:82px}
-    .rl-runner.run .gm-ch{filter:drop-shadow(0 0 4px rgba(255,255,255,.35))}
-    .rl-runner.hop{animation:rlhop .18s ease}
-    @keyframes rlhop{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-64%)}}
-    .rl-turn{position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);z-index:6;opacity:0;
-      font-family:var(--display);font-size:26px;color:#fff;background:rgba(0,0,0,.5);padding:10px 22px;border-radius:16px;
-      transition:opacity .2s;white-space:nowrap}
-    .rl-turn.show{opacity:1} .rl-turn.big{font-size:34px;animation:rlpulse .6s ease infinite alternate}
-    @keyframes rlpulse{from{transform:translate(-50%,-50%) scale(1)}to{transform:translate(-50%,-50%) scale(1.08)}}
-    .rl-prog{margin:2px 16px 0;height:22px;border-radius:12px;background:#241f37;position:relative;overflow:hidden}
-    .rl-progfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:12px;transition:width .1s linear}
-    .rl-prog span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-      font-family:var(--round);font-size:12px;color:var(--ink);text-shadow:0 1px 2px rgba(0,0,0,.5)}
-    .rl-foot{display:flex;gap:12px;padding:12px 16px 16px}
-    .rl-ftbtn{flex:1;border:none;border-radius:20px;padding:24px 0;cursor:pointer;user-select:none;
-      font-family:var(--round);font-size:34px;color:#221206;background:linear-gradient(100deg,var(--hot),var(--hot2));
+    /* 계주(오벌 트랙) */
+    .rl-arena{position:relative;flex:1;min-height:0;margin:8px 12px;border-radius:18px;overflow:hidden;background:#245c3a;
+      box-shadow:inset 0 0 70px rgba(0,0,0,.4)}
+    .rl-svg{position:absolute;inset:0;width:100%;height:100%}
+    .rl-runners{position:absolute;inset:0;pointer-events:none}
+    .rl-run{position:absolute;width:30px;height:38px;transform:translate(-50%,-50%);transition:left .12s linear,top .12s linear}
+    .rl-run .gm-ch{width:30px;height:38px}
+    .rl-run.flip .gm-ch svg{transform:scaleX(-1)}
+    .rl-run.next{opacity:.55}
+    .rl-run.hop{animation:rlhop .18s ease}
+    @keyframes rlhop{0%,100%{transform:translate(-50%,-50%)}50%{transform:translate(-50%,-66%)}}
+    /* 결승선 띠 */
+    .rl-ribbon{position:absolute;left:50%;top:7%;width:34%;height:16px;transform:translate(-50%,-50%) scaleX(0);transform-origin:center;
+      background:repeating-linear-gradient(45deg,var(--gc,#fff),var(--gc,#fff) 8px,#fff 8px,#fff 16px);
+      border-radius:3px;z-index:5;opacity:0;transition:transform .4s ease,opacity .3s;box-shadow:0 2px 8px rgba(0,0,0,.4);
+      display:flex;align-items:center;justify-content:center}
+    .rl-ribbon span{font-family:var(--display);font-size:10px;color:#15121f;background:rgba(255,255,255,.85);padding:0 4px;border-radius:3px;letter-spacing:1px}
+    .rl-ribbon.on{opacity:1;transform:translate(-50%,-50%) scaleX(1)}
+    /* 순위 배너(우→좌) */
+    .rl-banner-wrap{position:absolute;left:0;right:0;top:10px;height:36px;overflow:hidden;pointer-events:none;z-index:7}
+    .rl-banner{position:absolute;white-space:nowrap;font-family:var(--display);font-size:19px;color:#fff;left:100%;
+      padding:5px 16px;border-radius:14px;background:rgba(10,8,18,.7);text-shadow:0 2px 6px rgba(0,0,0,.6);
+      animation:rlbannermove 2.4s linear forwards}
+    .rl-banner.ot{color:#ffd54a} .rl-banner.lead{color:#7cffb2}
+    @keyframes rlbannermove{from{transform:translateX(0)}to{transform:translateX(calc(-100vw - 100%))}}
+    /* 좌상단 주자 초상 */
+    .rl-portraits{position:absolute;left:8px;top:8px;display:flex;flex-direction:column;gap:4px;z-index:6}
+    .rl-pcard{display:flex;align-items:center;gap:5px;background:rgba(12,10,20,.62);border-left:3px solid var(--gc);
+      border-radius:10px;padding:3px 7px 3px 5px;backdrop-filter:blur(2px)}
+    .rl-pcard.me{box-shadow:0 0 0 1.5px rgba(255,255,255,.55)}
+    .rl-ptag{font-family:var(--round);font-size:9px;color:#15121f;padding:1px 5px;border-radius:6px}
+    .rl-pruns{display:flex;flex-direction:column;gap:1px}
+    .rl-prow{display:flex;align-items:center;gap:3px}
+    .rl-prow.next{opacity:.5}
+    .rl-pav{width:20px;height:24px;overflow:hidden}
+    .rl-pav .gm-ch{width:20px;height:24px}
+    .rl-pnm{font-family:var(--round);font-size:10px;color:#fff;max-width:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* 우상단 순위표 */
+    .rl-rank{position:absolute;right:8px;top:8px;width:78px;height:104px;z-index:6}
+    .rl-rankrow{position:absolute;left:0;right:0;height:24px;display:flex;align-items:center;gap:5px;
+      background:rgba(12,10,20,.62);border-radius:9px;padding:0 7px;transition:transform .4s cubic-bezier(.4,1.4,.5,1);backdrop-filter:blur(2px)}
+    .rl-rankrow.me{box-shadow:0 0 0 1.5px rgba(255,255,255,.5)}
+    .rl-rankrow.lead{background:rgba(255,213,74,.22)}
+    .rl-rkpos{font-family:var(--display);font-size:14px;color:#fff;min-width:14px;text-align:center}
+    .rl-rankrow.lead .rl-rkpos{color:#ffd54a}
+    .rl-rktag{font-family:var(--round);font-size:10px;color:#15121f;padding:1px 6px;border-radius:6px}
+    /* 카운트다운 */
+    .rl-count{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:12;
+      font-family:var(--display);font-size:90px;color:#fff;text-shadow:0 6px 20px rgba(0,0,0,.6);background:rgba(6,5,12,.35)}
+    .rl-count.on{display:flex} .rl-count.go{font-size:64px;color:#ffd54a}
+    .rl-count.pop{animation:rlpop .4s ease}
+    @keyframes rlpop{from{transform:scale(1.6);opacity:.2}to{transform:scale(1);opacity:1}}
+    /* 하단 컨트롤 */
+    .rl-foot{display:flex;flex-direction:column;gap:8px;padding:8px 16px 16px}
+    .rl-hint{font-family:var(--round);font-size:12px;color:var(--mut);text-align:center;min-height:15px}
+    .rl-act{border:none;border-radius:18px;padding:14px;cursor:pointer;user-select:none;font-family:var(--display);font-size:22px;color:#221206;
+      background:linear-gradient(100deg,#ffd54a,#ffb454);box-shadow:0 8px 20px -8px rgba(0,0,0,.5);transition:transform .06s,filter .1s}
+    .rl-act:not(.ready){filter:grayscale(.6) brightness(.62);cursor:not-allowed}
+    .rl-act.ready{animation:rlactpulse .7s ease infinite alternate}
+    .rl-act.ready:active{transform:scale(.97)}
+    @keyframes rlactpulse{from{transform:scale(1)}to{transform:scale(1.03)}}
+    .rl-feet{display:flex;gap:12px}
+    .rl-ftbtn{flex:1;border:none;border-radius:20px;padding:22px 0;cursor:pointer;user-select:none;
+      font-family:var(--round);font-size:32px;color:#221206;background:linear-gradient(100deg,var(--hot),var(--hot2));
       box-shadow:0 10px 22px -8px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;gap:2px;transition:transform .05s,filter .1s}
-    .rl-ftbtn small{font-family:var(--round);font-size:15px}
+    .rl-ftbtn small{font-family:var(--round);font-size:14px}
     .rl-ftbtn:disabled{filter:grayscale(.7) brightness(.6);cursor:not-allowed}
-    .rl-ftbtn.next:not(:disabled){outline:3px solid #fff;outline-offset:-3px}
+    .rl-ftbtn.nextfoot:not(:disabled){outline:3px solid #fff;outline-offset:-3px}
     .rl-ftbtn.bad{background:#ff5c5c;transform:translateX(-4px)}
     .rl-ftbtn:active:not(:disabled){transform:scale(.96)}
 
