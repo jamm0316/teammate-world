@@ -257,10 +257,10 @@
       for(let i=0;i<N;i++){ const p=document.createElement('div'); p.className='confetti';
         p.style.left=Math.random()*100+'%';
         p.style.background=[color,'#ffd54a','#ff7a59','#8b8bff','#2ec4b6'][i%5];
-        p.style.animationDelay=(Math.random()*0.5)+'s';
-        p.style.animationDuration=(0.9+Math.random()*0.8)+'s';
-        p.style.setProperty('--dx',(Math.random()*60-30)+'px');
-        host.appendChild(p); setTimeout(()=>p.remove(),2200);
+        p.style.animationDelay=(Math.random()*0.6)+'s';
+        p.style.animationDuration=(1.8+Math.random()*1.4)+'s';
+        p.style.setProperty('--dx',(Math.random()*180-90)+'px');
+        host.appendChild(p); setTimeout(()=>p.remove(),4200);
       }
     }
   }
@@ -493,9 +493,9 @@
     .tg-plus{position:absolute;font-family:var(--display);font-size:20px;color:#fff;opacity:.9;pointer-events:none;
       animation:tgup .6s ease forwards;z-index:5}
     @keyframes tgup{from{transform:translateY(0);opacity:.9}to{transform:translateY(-60px);opacity:0}}
-    .tg-fanfare{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
-    .confetti{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;opacity:.95;animation:confall linear forwards}
-    @keyframes confall{to{transform:translate(var(--dx,0),120%) rotate(540deg);opacity:.2}}
+    .tg-fanfare{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
+    .confetti{position:absolute;top:-16px;width:8px;height:12px;border-radius:2px;opacity:.95;animation:confall linear forwards}
+    @keyframes confall{to{transform:translate(var(--dx,0),102vh) rotate(540deg);opacity:.25}}
     .tg-foot{padding:8px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:8px}
     .tg-mine{font-family:var(--round);font-size:14px;color:var(--mut)} .tg-mine b{color:var(--ink);font-size:18px}
     .tg-spectate{font-family:var(--round);font-size:15px;color:var(--mut);padding:20px 0}
