@@ -14,6 +14,7 @@ ADR(Architecture Decision Record)은 프로젝트에서 내린 주요 설계 결
 - [ADR-007: 인증 — 익명 계정 + JWT](ADR-007-auth-anonymous-jwt.md)
 - [ADR-009: 채팅 저장 — Pub/Sub 전파만](ADR-009-chat-persistence.md)
 - [ADR-010: PK 설계 — 복합 PK 금지, 단일 id](ADR-010-single-column-pk.md)
+- [ADR-011: 실시간 입력 전송 계약 — REST PATCH vs WS(STOMP)](ADR-011-realtime-transport-contract.md)
 
 ### [기획+백엔드]
 - [ADR-005: 줄다리기 — 4팀 동시전 → 1:1 토너먼트](ADR-005-tug-of-war-1v1-tournament.md)
@@ -31,3 +32,4 @@ ADR(Architecture Decision Record)은 프로젝트에서 내린 주요 설계 결
 8. [ADR-008: 캐릭터 저장 — 마스터 테이블 vs User 컬럼](ADR-008-character-schema.md) · [기획+백엔드]
 9. [ADR-009: 채팅 저장 — Pub/Sub 전파만](ADR-009-chat-persistence.md) · [백엔드]
 10. [ADR-010: PK 설계 — 복합 PK 금지, 단일 id](ADR-010-single-column-pk.md) · [백엔드]
+11. [ADR-011: 실시간 입력 전송 계약 — REST PATCH vs WS(STOMP)](ADR-011-realtime-transport-contract.md) · [백엔드]

@@ -38,6 +38,7 @@
   .field:focus{border-color:var(--hot)}
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
   .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .pick{padding:14px 0;border-radius:14px;border:1.5px solid #3a3352;background:#241f37;
     font-family:var(--round);font-size:15px;color:var(--mut);cursor:pointer;transition:.15s;text-align:center}
   .pick.on{color:#15121f;font-weight:700;transform:translateY(-2px);background:var(--hot);border-color:var(--hot)}
@@ -254,6 +255,27 @@
     border:1.5px solid #3a3352;color:var(--mut);cursor:pointer}
   .chip.on{background:var(--hot);border-color:var(--hot);color:#15121f}
 
+  /* 공지 작성(운영자) */
+  .ntc-count{font-family:var(--round);font-size:12px;color:var(--mut);text-align:right;margin-top:6px}
+  .ntc-count.over{color:#ff7a7a}
+  .ntc-act{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:16px}
+  .ntc-act .cta{margin-top:0}
+  .ntc-act .ghost{border:1.5px solid #3a3352;background:#241f37;color:var(--mut);border-radius:14px;
+    font-family:var(--round);font-size:16px;padding:14px;cursor:pointer}
+
+  /* 공지 전광판(전체 사용자) */
+  .ntc-ov{position:fixed;inset:0;z-index:95;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;pointer-events:none;background:radial-gradient(ellipse at center,rgba(10,8,18,.72),rgba(10,8,18,.36) 70%,rgba(10,8,18,0));
+    animation:ntcIn .35s cubic-bezier(.2,1.4,.4,1) both}
+  .ntc-ov.out{animation:ntcOut .5s ease both}
+  .ntc-ov .kicker{font-family:var(--round);font-size:15px;color:#15121f;padding:5px 16px;border-radius:20px;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));box-shadow:0 6px 20px rgba(255,122,89,.45)}
+  .ntc-ov .msg{font-family:var(--display);font-size:clamp(30px,10vw,60px);line-height:1.18;text-align:center;
+    max-width:480px;color:#fff;margin-top:16px;word-break:keep-all;text-shadow:0 4px 24px rgba(0,0,0,.8),0 0 40px rgba(255,180,84,.35)}
+  .ntc-ov .by{font-family:var(--round);font-size:13px;color:var(--mut);margin-top:14px}
+  @keyframes ntcIn{from{opacity:0;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+  @keyframes ntcOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.08)}}
+
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;
     background:var(--ink);color:#15121f;font-family:var(--round);font-size:14px;padding:10px 18px;border-radius:30px;z-index:60;transition:.25s;pointer-events:none}
@@ -292,6 +314,7 @@
         <button class="btn" id="btnNpc">NPC ON</button>
         <button class="btn hot" id="btnGames">🎮 종목</button>
         <button class="btn" id="btnNext">다음 문제 ▶</button>
+        <button class="btn" id="btnNotice" style="display:none">📢 공지</button>
         <button class="btn" id="btnReset">↺</button>
       </div>
     </div>
@@ -313,7 +336,7 @@
 <script>
 /* ===================== config ===================== */
 const GEN={1:'1기',2:'2기',3:'3기',4:'4기'}, GENC={1:'#ff6b6b',2:'#ffb454',3:'#2ec4b6',4:'#8b8bff'};
-const ROLE={mentor:'멘토',mentee:'멘티'};
+const ROLE={mentor:'멘토',mentee:'멘티',admin:'운영자'};
 // welcome gifts (3D assets) — assigned once at character creation
 const GIFTS={
   chicken:{id:'chicken',name:'닭',emoji:'🐓',
@@ -414,6 +437,10 @@ FURNITURE.forEach((f,fi)=>{ (SEAT_OFF[f.type]||[]).forEach((o,si)=>{
 const SEATBYID={}; SEATS.forEach(s=>SEATBYID[s.id]=s);
 
 /* ===================== storage layer ===================== */
+/* [MX] 백엔드 구현 시: 이 계층 전체가 API 클라이언트로 대체됨.
+   - 개인 상태(me 등, sh=false) → REST(JWT 인증, ADR-007)
+   - 공유 상태(좌표/공지/쪽지, sh=true) → 용도별로 REST 또는 WS(STOMP)로 분리 (각 호출부 [MX] 참고)
+   - 폴링(slist/sget 반복)은 전부 WS subscribe로 교체 — REST 폴링 금지 (ADR-001) */
 const HAS=(typeof window!=='undefined'&&window.storage&&typeof window.storage.list==='function');
 let SHARED_OK=HAS; const mem={true:{},false:{}};
 async function sset(k,v,sh){const val=typeof v==='string'?v:JSON.stringify(v);
@@ -575,6 +602,8 @@ const $=s=>document.querySelector(s);
 function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clearTimeout(p._t);p._t=setTimeout(()=>p.classList.remove('show'),1500);}
 
 /* ===================== boot ===================== */
+/* [MX] 백엔드 구현 시: GET /api/users/me 붙여야 함 — 저장된 JWT로 내 프로필 복원(ADR-007 익명 계정).
+   토큰 없음/만료 → 온보딩으로. localStorage의 me는 캐시로만 유지 */
 (async function(){ const s=await sget('me',false); if(s){try{me=JSON.parse(s);}catch(e){}}
   if(me&&!me.gift){me.gift=randGift();await sset('me',me,false);} // migrate pre-gift profiles
   if(me&&me.outfit&&me.role){enterGame();} else {renderOnboard();}
@@ -590,7 +619,7 @@ function renderOnboard(){
      <h2>나의 기수</h2>
      <div class="grid4">${[1,2,3,4].map(g=>`<div class="pick" data-g="${g}" data-k="gen" data-v="${g}">${g}기</div>`).join('')}</div>
      <h2>나는 멘토? 멘티?</h2>
-     <div class="grid2"><div class="pick" data-k="role" data-v="mentor">🧑‍🏫 멘토</div><div class="pick" data-k="role" data-v="mentee">🧑‍🎓 멘티</div></div>
+     <div class="grid3"><div class="pick" data-k="role" data-v="mentor">🧑‍🏫 멘토</div><div class="pick" data-k="role" data-v="mentee">🧑‍🎓 멘티</div><div class="pick" data-k="role" data-v="admin">🛡 운영자</div></div>
      <h2>성별 (캐릭터 외형에 반영돼요)</h2>
      <div class="grid2"><div class="pick" data-k="gender" data-v="M">남자</div><div class="pick" data-k="gender" data-v="F">여자</div></div>
      <button class="cta" id="go" disabled>캐릭터 뽑으러 가기 →</button>
@@ -641,6 +670,8 @@ function renderGacha(base){
     },650);
   }
   $('#reroll').onclick=()=>{$('#orbInner').outerHTML=`<div id="orbInner" style="font-size:64px">🎁</div>`;$('#roll').style.display='block';doRoll();};
+  /* [MX] 백엔드 구현 시: POST /api/users 붙여야 함 — 닉네임·기수·역할·캐릭터 확정 저장(ADR-008)
+     + 응답으로 익명 JWT 발급받아 보관(ADR-007). 이후 모든 REST/WS 연결에 이 토큰 사용 */
   $('#enter').onclick=async()=>{ me=cur; await sset('me',me,false); enterGame(); };
 }
 
@@ -686,9 +717,12 @@ function enterGame(){
   $('#screen').innerHTML=''; $('#game').style.display='flex';
   sizeStage(); window.addEventListener('resize',sizeStage);
   buildGround(); buildBoard();
+  /* [MX] 백엔드 구현 시: PATCH /api/quiz/current 붙여야 함 — 운영자만 문제 전환(서버가 role 검증).
+     전파는 서버가 WS(STOMP) /topic/quiz 로 broadcast → 전원 buildBoard() */
   $('#btnNext').onclick=async()=>{qidx=(qidx+1)%QUESTIONS.length;await sset('quiz:idx',String(qidx),true);buildBoard();toast('다음 문제!');};
   $('#btnNpc').onclick=()=>{botsOn=!botsOn;$('#btnNpc').textContent='NPC '+(botsOn?'ON':'OFF');$('#btnNpc').classList.toggle('off',!botsOn);if(botsOn)spawnBots();else removeBots();};
   $('#btnGames').onclick=()=>{if(window.Games)window.Games.openMenu();else toast('종목 로딩 중…');};
+  if(me.role==='admin'){$('#btnNotice').style.display='';$('#btnNotice').onclick=openNoticeComposer;}
   $('#btnReset').onclick=async()=>{await sset('me',null,false);mem.false={};location.reload();};
   $('#stage').addEventListener('pointerdown',onTap); bindZoom();
 
@@ -699,10 +733,14 @@ function enterGame(){
   cam.x=selfE.x-view.w/2; cam.y=selfE.y-view.h/2;
   spawnBots();
   loadQ();
+  initNotice();
   refreshLockerBadges();
+  /* [MX] 백엔드 구현 시: 아래 setInterval 폴링 3종은 전부 제거 대상.
+     pushSelf → WS publish(초당 최대 5회, ADR-003), pollRemote → WS subscribe, refreshLockerBadges → GET(주기 완화) */
   setInterval(pushSelf,1500); setInterval(pollRemote,1500); setInterval(refreshLockerBadges,8000);
   requestAnimationFrame(loop);
 }
+/* [MX] 백엔드 구현 시: GET /api/quiz/current 붙여야 함(입장 시 1회) + WS(STOMP) subscribe /topic/quiz(이후 갱신) */
 async function loadQ(){const v=await sget('quiz:idx',true);if(v!=null){qidx=Math.max(0,Math.min(QUESTIONS.length-1,+v));buildBoard();}}
 
 // ---- furniture / decor SVG ----
@@ -822,6 +860,8 @@ function onTap(e){
 
 /* ---- gen lockers (쪽지) ---- */
 let lockerRole='mentor';
+/* [MX] 백엔드 구현 시: GET /api/lockers/{gen}/notes 붙여야 함 — 쪽지는 영속 데이터이므로 REST(DB 저장).
+   좌표(휘발)와 달리 보존가치가 있어 ADR-003 판별식상 DB 대상 */
 async function loadNotes(gen){
   const keys=await slist(`note:${gen}:`,true); const notes=[];
   for(const k of keys){ const v=await sget(k,true); if(!v)continue;
@@ -829,14 +869,16 @@ async function loadNotes(gen){
   return notes.sort((a,b)=>b.ts-a.ts);
 }
 function openLocker(gen){
-  lockerRole=me.role==='mentor'?'mentee':'mentor'; // default: write to the other side
+  // default: write to the other side (운영자는 상대가 딱히 없으므로 멘토로)
+  lockerRole=me.role==='mentor'?'mentee':'mentor';
   const bg=document.createElement('div'); bg.className='modalbg'; bg.id='mbg';
   bg.innerHTML=`<div class="modal">
     <div class="mhead">🗄 <span style="color:${GENC[gen]}">${GEN[gen]}</span> 사물함
       <button class="x" id="mClose">✕</button></div>
-    <div class="grid2" style="margin-top:14px">
+    <div class="grid3" style="margin-top:14px">
       <div class="pick" data-r="mentor">🧑‍🏫 멘토에게</div>
       <div class="pick" data-r="mentee">🧑‍🎓 멘티에게</div>
+      <div class="pick" data-r="admin">🛡 운영자에게</div>
     </div>
     <div class="notes" id="noteList"><div class="empty">불러오는 중...</div></div>
     <h2>받는 사람</h2>
@@ -885,6 +927,8 @@ function openLocker(gen){
       : `<div class="empty">아직 ${ROLE[lockerRole]}에게 온 쪽지가 없어요</div>`;
     list.querySelectorAll('canvas.g3').forEach(c=>mountGift(c,c.dataset.g));
   }
+  /* [MX] 백엔드 구현 시: POST /api/lockers/{gen}/notes 붙여야 함.
+     선물 첨부(giftSent 1회 제한)는 클라 플래그를 믿지 말고 서버가 User 레코드로 검증·차감(중복 전송 차단) */
   bg.querySelector('#noteSend').onclick=async()=>{
     const toName=bg.querySelector('#noteTo').value.trim(), text=bg.querySelector('#noteTxt').value.trim();
     if(!toName){toast('받는 사람을 입력해주세요');return;}
@@ -898,6 +942,7 @@ function openLocker(gen){
   };
   paint();
 }
+/* [MX] 백엔드 구현 시: GET /api/lockers/counts 붙여야 함 — 기수별 쪽지 수 일괄 조회(현재처럼 기수별 slist 반복 금지) */
 async function refreshLockerBadges(){
   for(const l of LOCKERS){ const keys=await slist(`note:${l.gen}:`,true);
     const el=$('#lkb'+l.gen); if(!el)continue;
@@ -933,7 +978,11 @@ function botAI(b,now){
 
 /* ---- remote sync ---- */
 let lastPush=0;
+/* [MX] 백엔드 구현 시: WS(STOMP) publish /app/world/move 붙여야 함 — REST PATCH 아님(ADR-001).
+   페이로드는 {x,y,sit}만(프로필·칭호는 입장/변경 시 1회 전송). 서버는 JVM 메모리에만 보관(ADR-003, DB 저장 금지) */
 async function pushSelf(){ await sset('p:'+me.id,{nick:me.nick,gen:me.gen,char:me,titles:titlesOf(me),x:Math.round(selfE.x),y:Math.round(selfE.y),sit:selfE.sitting||null,ts:Date.now()},true); }
+/* [MX] 백엔드 구현 시: WS(STOMP) subscribe /topic/world.positions 붙여야 함 — 서버 틱이 전원 좌표를 스냅샷 broadcast.
+   폴링 제거. 수신 좌표는 지금처럼 tx/ty 목표점으로 넣고 loop()의 보간이 지연을 흡수(ADR-001) */
 async function pollRemote(){
   const keys=await slist('p:',true); const now=Date.now(); const seen=new Set();
   for(const k of keys){ const v=await sget(k,true); if(!v)continue; let d;try{d=JSON.parse(v);}catch(e){continue;}
@@ -944,6 +993,73 @@ async function pollRemote(){
     else {e.tx=d.x;e.ty=d.y;e.sitting=d.sit||null; if(dTitles.join(',')!==(e.titles||[]).join(',')){e.titles=dTitles; if(e.el){const tag=e.el.querySelector('.tag'); if(tag)tag.outerHTML=tagHTML(e);}}}
   }
   entities=entities.filter(e=>{if(e.kind==='remote'&&!seen.has(e.id)){e.el?.remove();return false;}return true;});
+}
+
+/* ---- 공지 (운영자 → 전체) ---- */
+const NOTICE_KEY='notice:live';   // 최신 공지 1건만 유지
+const NOTICE_MAX=30;              // 공지 글자 수 제한
+const NOTICE_SHOW=4000;           // 화면에 떠 있는 시간(ms)
+const NOTICE_FRESH=15000;         // 이보다 오래된 공지는 띄우지 않음(뒤늦은 폴링 대비)
+let noticeSeenTs=0;               // 이미 표시한 공지의 ts
+
+// 입장 시점의 공지는 '이미 본 것'으로 처리 — 과거 공지가 다시 뜨지 않도록
+/* [MX] 백엔드 구현 시: WS(STOMP) subscribe /topic/notice 붙여야 함 — pollNotice 폴링 제거.
+   push 수신이라 NOTICE_FRESH/noticeSeenTs 같은 뒤늦은-폴링 보정 로직도 함께 제거 가능 */
+async function initNotice(){
+  const d=await readNotice(); if(d)noticeSeenTs=d.ts;
+  setInterval(pollNotice,1500);
+}
+async function readNotice(){
+  const v=await sget(NOTICE_KEY,true); if(!v)return null;
+  try{const d=JSON.parse(v);return d&&d.ts?d:null;}catch(e){return null;}
+}
+async function pollNotice(){
+  const d=await readNotice(); if(!d||d.ts<=noticeSeenTs)return;
+  noticeSeenTs=d.ts;
+  if(Date.now()-d.ts>NOTICE_FRESH)return; // 한참 지난 공지는 조용히 흘려보냄
+  showNotice(d);
+}
+// 화면 중앙 전광판 — 크게 떴다가 사라짐
+function showNotice(d){
+  document.querySelector('.ntc-ov')?.remove();
+  const ov=document.createElement('div'); ov.className='ntc-ov';
+  ov.innerHTML=`<div class="kicker">📢 공지</div>
+    <div class="msg">${esc(d.text)}</div>
+    <div class="by">${esc(d.from||'운영자')}</div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{ov.classList.add('out');setTimeout(()=>ov.remove(),500);},NOTICE_SHOW);
+}
+function openNoticeComposer(){
+  const bg=document.createElement('div'); bg.className='modalbg';
+  bg.innerHTML=`<div class="modal">
+    <div class="mhead">📢 전체 공지<button class="x" id="ntcX">✕</button></div>
+    <h2>공지 내용 (${NOTICE_MAX}자 이내)</h2>
+    <textarea class="field" id="ntcTxt" maxlength="${NOTICE_MAX}" placeholder="예: 잠시 후 계주 시작합니다!"></textarea>
+    <div class="ntc-count" id="ntcCnt">0 / ${NOTICE_MAX}</div>
+    <div class="ntc-act">
+      <button class="ghost" id="ntcCancel">취소</button>
+      <button class="cta" id="ntcSend">공지하기 📢</button>
+    </div>
+  </div>`;
+  document.body.appendChild(bg);
+  const close=()=>bg.remove();
+  bg.onclick=e=>{if(e.target===bg)close();};
+  bg.querySelector('#ntcX').onclick=close;
+  bg.querySelector('#ntcCancel').onclick=close;
+  const ta=bg.querySelector('#ntcTxt'), cnt=bg.querySelector('#ntcCnt');
+  ta.oninput=()=>{cnt.textContent=`${ta.value.length} / ${NOTICE_MAX}`;
+    cnt.classList.toggle('over',ta.value.length>=NOTICE_MAX);};
+  ta.focus();
+  /* [MX] 백엔드 구현 시: POST /api/notices 붙여야 함 — 쓰기는 REST(운영자 role 서버 검증·글자수 재검증),
+     전파는 서버가 WS(STOMP) /topic/notice 로 broadcast. 클라가 직접 공유 상태에 쓰지 않음 */
+  bg.querySelector('#ntcSend').onclick=async()=>{
+    const text=ta.value.trim().slice(0,NOTICE_MAX);
+    if(!text){toast('공지 내용을 입력해주세요');return;}
+    const d={text,from:me.nick,ts:Date.now()};
+    await sset(NOTICE_KEY,d,true);
+    noticeSeenTs=d.ts; // 폴링으로 중복 표시되지 않게
+    close(); showNotice(d);
+  };
 }
 
 /* ---- DOM + loop ---- */
@@ -974,9 +1090,11 @@ function tagHTML(e){
   const role=e.role||(e.char&&e.char.role);
   const titles=titlesOf(e);
   const ttls=titles.length?`<div class="ttls">${titles.map(t=>`<i class="ttl" title="${esc(t)}">${titleBadge(t)}</i>`).join('')}</div>`:'';
-  return `<div class="tag">${ttls}<div class="tnm"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:#e8e2f6">${ROLE[role]}</i>`:''}${esc(e.nick)}</div></div>`;
+  return `<div class="tag">${ttls}<div class="tnm"><i style="background:${GENC[e.gen]}">${GEN[e.gen]}</i>${role?`<i style="background:${role==='admin'?'#ffd7a1':'#e8e2f6'}">${ROLE[role]}</i>`:''}${esc(e.nick)}</div></div>`;
 }
 // 종목 우승 등으로 칭호를 부여하고 즉시 반영(저장·이름표·브로드캐스트)
+/* [MX] 백엔드 구현 시: 클라 자가 부여 제거 — 서버가 경기 판정 결과로 칭호를 부여하고(서버 권위, ADR-006)
+   WS(STOMP) 개인 큐 /user/queue/titles 로 수신해야 함. 이 함수는 '수신 후 UI 반영'만 남김 */
 async function awardTitle(t){
   if(!me)return;
   const cur=titlesOf(me);

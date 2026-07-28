@@ -2,7 +2,15 @@
    줄다리기 · 팀 계주 참가자 화면(세로).
    백엔드 이전 POC라 팀원/상대는 봇으로 시뮬레이션한다.
    index.html 인라인 스크립트의 전역(buildChar/GEN/GENC/shade/
-   rollChar/toast/esc/me)을 공유하는 classic script로 로드된다. */
+   rollChar/toast/esc/me)을 공유하는 classic script로 로드된다.
+
+   [MX] 백엔드 구현 시 이 파일의 전송 계약(파일 내 각 [MX] 참고):
+   - 실시간 입력·상태는 전부 WS(STOMP) — REST PATCH 폴링 금지(ADR-001)
+   - 줄다리기 연타: 0.5s 배칭 publish + 서버 clamp (ADR-005)
+   - 계주 주자 탭: 배칭 없이 매 탭 publish — 서버가 L/R 교대 완전 판정(ADR-006)
+   - 계주 응원: 줄다리기와 동일하게 0.5s 배칭 publish
+   - 승패·순위·칭호 판정은 전부 서버 → 클라는 결과 수신·연출만
+   - 봇 시뮬레이션(MEMBERS, 봇 tapsL/R, s.speed)은 서버 broadcast 수신으로 대체 */
 (function(){
   if(window.Games) return;
   const TEAMS=[1,2,3,4];
@@ -57,6 +65,8 @@
     let killed=false; const _close=ov.close; ov.close=()=>{killed=true;_close();};
 
     // 랜덤 대진표: 준결승 2경기 → 결승 (NBA 플레이오프식)
+    /* [MX] 백엔드 구현 시: 대진 추첨은 서버가 수행 — WS(STOMP) subscribe /topic/tug 붙여야 함.
+       경기 시작/대진/라운드 진행 이벤트를 서버가 push(진행자 주도, ADR-004·005). 클라 shuffle 제거 */
     const draw=shuffle(TEAMS);
     const semis=[[draw[0],draw[1]],[draw[2],draw[3]]];
     const bracket={winners:[null,null],champion:null};
@@ -180,6 +190,9 @@
         const bias = iPlay ? {l:1,r:1} : (Math.random()<0.5?{l:1.09,r:0.93}:{l:0.93,r:1.09});
 
         if(iPlay){
+          /* [MX] 백엔드 구현 시: WS(STOMP) publish /app/tug/tap 붙여야 함 — 매 탭 전송이 아니라
+             0.5s 창에 누적한 {count}를 배칭 전송(ADR-005: 초당 수천→수백 msg). 서버는 창당 상한 clamp
+             (속도상한) 후 팀 LongAdder에 누적. 로컬 myTaps 증가는 즉각 피드백용으로 유지 */
           const mash=ov.root.querySelector('#tgMash'), myEl=ov.root.querySelector('#tgMy');
           mash.addEventListener('pointerdown',e=>{ e.preventDefault(); if(!running)return;
             myTaps++; if(gA===mg)tapsL+=HUMAN; else tapsR+=HUMAN; myEl.textContent=myTaps;
@@ -190,6 +203,9 @@
           });
         }
 
+        /* [MX] 백엔드 구현 시: 아래 봇 연타 시뮬(rate/bias/tapsL·R 증분) 제거 — 서버 게임 틱(10Hz)이
+           WS(STOMP) /topic/tug/{matchId} 로 broadcast하는 {tapsL,tapsR,frac,tLeft}를 수신해 반영.
+           knot 보간(로컬 스무딩)은 그대로 유지해 브로드캐스트 사이 지연을 흡수(ADR-001) */
         const stop=animate(ov.root,dt=>{
           if(running){
             tLeft-=dt; if(tLeft<=0){tLeft=0;running=false;stop();finish();return;}
@@ -212,6 +228,8 @@
             statusEl.textContent=`${name} · 우세 ${GEN[lead]}`; } }
         });
 
+        /* [MX] 백엔드 구현 시: 승패는 클라 계산 금지 — 서버가 '1인당 평균 연타(분모는 경기 시작 시점 고정)'로
+           판정(ADR-005)한 MATCH_END 이벤트 {winner}를 WS로 수신해 연출만 수행 */
         function finish(){
           timerEl.textContent=''; timerEl.classList.remove('low');
           const avgL=tapsL/memL, avgR=tapsR/memR;
@@ -245,6 +263,8 @@
         </div>`;
       statusEl.textContent='토너먼트 종료';
       fanfare(ov.root.querySelector('#tgCF'),GENC[g],true);
+      /* [MX] 백엔드 구현 시: awardTitle 클라 호출 제거 — 서버가 우승 판정과 함께 칭호를 부여하고
+         /user/queue/titles 로 push(index.html awardTitle의 [MX] 참고) */
       if(isMine){ toast('🏆 우리 팀 우승! 「줄다리기의 달인」 획득'); if(typeof awardTitle==='function')awardTitle('줄다리기의 달인'); }
       ov.root.querySelector('#tgAgain').onclick=()=>{ov.close();startTug();};
       ov.root.querySelector('#tgDone').onclick=ov.close;
@@ -266,6 +286,8 @@
   }
 
   /* ===================== ② 팀 계주 (오벌 트랙) ===================== */
+  /* [MX] 백엔드 구현 시: 경기 참가/주자 배정은 서버 주도 — POST /api/relay/join(주자 순번 MY를 서버가 배정)
+     + WS(STOMP) subscribe /topic/relay/{raceId}(카운트다운·전 팀 위치·인계·순위 이벤트 수신) 붙여야 함 */
   function startRelay(){
     if(!me){toast('먼저 캐릭터를 만들어주세요');return;}
     const ov=overlay(), mg=myGen();
@@ -489,6 +511,9 @@
       bannerWrap.appendChild(b); setTimeout(()=>{b.remove();nextBanner();},2400); }
 
     /* 발 버튼 */
+    /* [MX] 백엔드 구현 시: WS(STOMP) publish /app/relay/step {foot} 붙여야 함 — 배칭 금지, 매 탭 즉시 전송.
+       배칭하면 L/R 순서 정보가 사라져 서버 완전 판정(ADR-006)이 불가. 주자는 팀당 1명(최대 4명)이라 부담 없음.
+       서버가 lastFoot 교대·최소 탭 간격을 검증해 유효 탭만 전진 반영 → 아래 로컬 교대 검사는 즉각 피드백용으로만 유지 */
     function step(foot){
       const s=T[mg];
       if(!started||ended||handedOff||!(s.leg===MY&&s.received))return;
@@ -512,11 +537,15 @@
        감쇠는 지수형(비율 감쇠). 선형 감쇠로 하면 "초당 N회 미만은 효과 0"인 절벽이 생겨
        보통 연타 속도(초당 3~5회)에서 아무 일도 일어나지 않는다. 지수형이면
        게이지가 대략 연타 속도에 비례해 수렴한다(초당 4회≈0.44, 9회≈만땅). */
+    /* [MX] 백엔드 구현 시: WS(STOMP) publish /app/relay/cheer 붙여야 함 — 줄다리기 연타와 동일하게
+       0.5s 배칭 {count} 전송 + 서버 clamp. 서버 틱이 팀 응원 게이지(감쇠 포함)를 확정하고, 그 %만큼
+       현재 주자 전진량에 가산해 broadcast → 아래 로컬 cheer 게이지는 즉각 피드백용으로만 유지 */
     cheerBtn.addEventListener('pointerdown',e=>{ e.preventDefault();
       if(!started||ended)return; cheer=Math.min(1,cheer+CHEER_TAP); vib(6);
       cheerBtn.classList.remove('pump'); void cheerBtn.offsetWidth; cheerBtn.classList.add('pump'); });
 
     /* 카운트다운 → 출발 */
+    /* [MX] 백엔드 구현 시: 카운트다운·출발 시각은 서버 이벤트(RACE_START)로 수신 — 전원 동시 출발 보장 */
     (function countdown(){ let n=3; countEl.classList.add('on'); countEl.textContent=n;
       const tick=()=>{ if(killed)return; n--;
         if(n>0){ countEl.textContent=n; countEl.classList.remove('pop'); void countEl.offsetWidth; countEl.classList.add('pop'); setTimeout(tick,750); }
@@ -527,6 +556,8 @@
     })();
 
     /* 결과 */
+    /* [MX] 백엔드 구현 시: 결승선 통과·최종 순위는 서버 판정 — RACE_END 이벤트 {ranks}를 WS로 수신해
+       연출만 수행. 아래 로컬 순위 계산 제거 */
     function endRace(win){
       ended=true; ribbon.classList.remove('on');
       const key=g=>T[g].finished?(1000-T[g].rank):(T[g].leg+T[g].u);
@@ -552,12 +583,16 @@
         <div class="gm-ract"><button class="btn hot" id="rlAgain">다시</button><button class="btn" id="rlDone">닫기</button></div>
       </div>`;
       result.classList.add('on'); confetti($('#rlCF'),GENC[win]);
+      /* [MX] 백엔드 구현 시: awardTitle 클라 호출 제거 — 서버가 우승 판정과 함께 칭호 부여(/user/queue/titles) */
       if(mine){ toast('🎉 우리 팀 우승! 「계주의 달인」 획득'); if(typeof awardTitle==='function')awardTitle('계주의 달인'); vib([20,60,20]); }
       $('#rlAgain').onclick=()=>{ov.close();startRelay();};
       $('#rlDone').onclick=ov.close;
     }
 
     /* 메인 루프 */
+    /* [MX] 백엔드 구현 시: 아래 주자 전진 시뮬(s.u/s.steps/s.speed·인계 자동 판정)은 서버 틱 broadcast
+       {teamId,leg,u,cheerGauge}[] 수신으로 대체 — 응원 게이지 확정 → 그 %로 유효 탭당 전진량 판정은 서버 몫.
+       클라 루프는 수신값을 목표로 보간·연출(배너/순위 표시)만 담당(ADR-001·006) */
     ov.loop(t=>{
       if(killed)return;
       const dt=Math.min(.05,(t-last)/1000); last=t;

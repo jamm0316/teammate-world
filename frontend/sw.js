@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'tw-v9';
+const CACHE_VERSION = 'tw-v10';
 const PRECACHE = ['./', 'manifest.json', 'games.js',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 
@@ -36,6 +36,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
+
+  /* [MX] 백엔드 구현 시: /api/ 경로 network-only 분기 붙여야 함 — 6번 동일 출처 cache-first가
+     GET /api/* 응답(공지·쪽지·프로필)을 캐시해 낡은 데이터를 돌려주는 사고 방지.
+     if (url.pathname.startsWith('/api/')) return;  // 가로채지 않음 (WS는 fetch 이벤트를 타지 않아 무관) */
 
   // 2. navigate 요청 — network-first, 실패 시 캐시 셸 fallback
   if (request.mode === 'navigate') {
