@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>팀메이트 월드 — 1~4기 다같이, 손 안에서</title>
+<meta name="theme-color" content="#14111d">
+<meta name="description" content="캐릭터를 뽑아 입장하고, 기수를 넘어 함께 어울리는 모바일 라이브 월드. 설치 없이 링크 하나로 시작하세요.">
+<link rel="icon" href="frontend/assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="frontend/assets/icons/apple-touch-icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="팀메이트 월드">
+<meta property="og:description" content="1~4기 다같이, 손 안에서 — 팀메이트 라이브 월드">
+<meta property="og:image" content="assets/landing/web/03-world.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700&family=Jua&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#f3eefb; --mut:#a79cc4; --dim:#7d739b;
+    --hot:#ff7a59; --hot2:#ffb454;
+    --g1:#ff6b6b; --g2:#ffb454; --g3:#2ec4b6; --g4:#8b8bff;
+    --card:#1c1830; --line:#332c4d;
+    --display:'Black Han Sans',sans-serif; --round:'Jua',sans-serif; --body:'Gothic A1',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; color:var(--ink); font-family:var(--body); font-size:16px; line-height:1.65;
+    background:
+      radial-gradient(120% 70% at 85% -5%,rgba(255,122,89,.16),transparent 55%),
+      radial-gradient(110% 65% at -10% 4%,rgba(139,139,255,.16),transparent 55%),
+      #14111d;
+    -webkit-font-smoothing:antialiased;
+  }
+  img{max-width:100%;display:block}
+  a{color:inherit}
+
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
+  section{padding:64px 0}
+  .eyebrow{font-family:var(--round);font-size:13px;color:var(--hot2);letter-spacing:.04em;margin:0 0 8px}
+  h2{font-family:var(--display);font-weight:400;font-size:27px;line-height:1.3;margin:0 0 8px;letter-spacing:-.01em}
+  .lead{color:var(--mut);font-size:15px;margin:0 0 28px;max-width:44ch}
+
+  /* ---------- hero ---------- */
+  .hero{padding:56px 0 40px;text-align:center}
+  .logo{font-family:var(--display);font-size:clamp(42px,12vw,66px);line-height:1.04;margin:0;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{font-family:var(--round);font-size:16px;color:var(--mut);margin:12px 0 0}
+  .hero p.sub{color:var(--mut);font-size:15px;margin:14px auto 0;max-width:32ch}
+  .cta{display:inline-block;margin-top:26px;padding:16px 34px;border-radius:16px;text-decoration:none;
+    font-family:var(--round);font-size:18px;color:#221206;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));
+    box-shadow:0 12px 28px -10px rgba(255,122,89,.7);transition:transform .15s ease}
+  .cta:active{transform:translateY(2px)}
+  .cta-note{font-size:13px;color:var(--dim);margin:12px 0 0}
+
+  .hero-shot{margin:38px auto 0;max-width:280px;max-height:400px;
+    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
+  .hero-shot img{object-fit:cover;object-position:top;height:400px}
+
+  /* phone frame */
+  .phone{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#0f0c18;
+    box-shadow:0 24px 50px -22px rgba(0,0,0,.9)}
+  .phone img{width:100%}
+
+  /* ---------- steps ---------- */
+  .steps{display:grid;gap:26px;grid-template-columns:1fr}
+  .step{display:grid;grid-template-columns:104px 1fr;gap:16px;align-items:center}
+  .step .phone{border-radius:14px;height:150px}
+  .step .phone img{height:100%;object-fit:cover;object-position:top}
+  .step h3{font-family:var(--round);font-weight:400;font-size:17px;margin:0 0 4px}
+  .step .n{display:inline-block;font-family:var(--round);font-size:12px;color:#221206;
+    background:var(--hot2);border-radius:20px;padding:1px 9px;margin-right:6px;vertical-align:2px}
+  .step p{margin:0;color:var(--mut);font-size:14px}
+
+  /* ---------- features ---------- */
+  .feats{display:grid;gap:18px;grid-template-columns:1fr}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .feat .shot{background:#0f0c18;border-bottom:1px solid var(--line);
+    max-height:290px;overflow:hidden;display:flex;justify-content:center}
+  .feat .shot img{width:100%;max-width:340px;object-fit:cover;object-position:top}
+  .feat .shot.mid img{object-position:center 47%}   /* 모달이 화면 가운데 있는 컷 */
+  .feat .body{padding:18px 20px 20px}
+  .feat h3{font-family:var(--round);font-weight:400;font-size:19px;margin:0 0 6px}
+  .feat p{margin:0;color:var(--mut);font-size:14.5px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .chips span{font-family:var(--round);font-size:12px;color:var(--mut);
+    background:#241f37;border:1px solid var(--line);border-radius:20px;padding:4px 11px}
+
+  /* ---------- admin ---------- */
+  .admin{border-radius:24px;padding:34px 24px;margin:0 auto;
+    background:linear-gradient(180deg,rgba(255,180,84,.10),rgba(255,180,84,.02));
+    border:1px solid rgba(255,180,84,.28)}
+  .admin .eyebrow{color:#ffd7a1}
+  .admin-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--round);font-size:13px;
+    color:#221206;background:#ffd7a1;border-radius:20px;padding:4px 12px;margin-bottom:14px}
+  .arow{display:flex;gap:14px;padding:16px 0;border-top:1px solid rgba(255,180,84,.18)}
+  .arow .ico{font-size:22px;line-height:1.3;flex:none;width:30px;text-align:center}
+  .arow h3{font-family:var(--round);font-weight:400;font-size:17px;margin:0 0 3px}
+  .arow p{margin:0;color:var(--mut);font-size:14px}
+  .admin .foot{margin:16px 0 0;font-size:13px;color:var(--dim)}
+
+  /* ---------- install ---------- */
+  .install{display:grid;gap:12px;grid-template-columns:1fr}
+  .ins{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+  .ins b{font-family:var(--round);font-weight:400;font-size:15px;display:block;margin-bottom:2px}
+  .ins span{color:var(--mut);font-size:14px}
+
+  /* ---------- footer ---------- */
+  footer{padding:46px 0 60px;text-align:center;border-top:1px solid var(--line)}
+  footer .cta{margin-top:0}
+  footer p{color:var(--dim);font-size:13px;margin:20px 0 0}
+  footer a.gh{color:var(--mut);text-decoration:none;border-bottom:1px solid var(--line)}
+
+  /* ---------- reveal ---------- */
+  .rv{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+  .rv.on{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .rv{opacity:1;transform:none;transition:none}
+  }
+
+  /* ---------- wide ---------- */
+  @media (min-width:720px){
+    section{padding:84px 0}
+    h2{font-size:32px}
+    .steps{grid-template-columns:repeat(3,1fr);gap:22px}
+    .step{grid-template-columns:1fr;text-align:center}
+    .step .phone{max-width:190px;height:250px;margin:0 auto 14px}
+    .feats{grid-template-columns:repeat(2,1fr)}
+    .install{grid-template-columns:1fr 1fr}
+    .admin{padding:44px 40px}
+    .hero-shot{max-width:320px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <h1 class="logo">팀메이트<br>월드</h1>
+    <p class="tag">1~4기 다같이, 손 안에서</p>
+    <p class="sub">캐릭터를 뽑아 입장하고, 기수를 넘어 같은 공간에서 어울리는 모바일 라이브 월드.</p>
+    <a class="cta" href="frontend/">지금 입장하기 →</a>
+    <p class="cta-note">설치 없이 바로 시작 · 휴대폰 세로 화면 권장</p>
+
+    <div class="hero-shot phone rv">
+      <img src="assets/landing/web/03b-world-wide.jpg" alt="팀메이트 월드 월드 화면" width="620" height="1340">
+    </div>
+  </div>
+</header>
+
+<!-- ============ STEPS ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">30초면 입장</p>
+    <h2>이렇게 시작해요</h2>
+    <p class="lead">가입도, 다운로드도 없습니다. 링크를 열고 세 번만 탭하면 끝.</p>
+
+    <div class="steps">
+      <div class="step rv">
+        <div class="phone"><img src="assets/landing/web/01-onboarding.jpg" alt="닉네임과 기수를 고르는 온보딩 화면" loading="lazy"></div>
+        <div>
+          <h3><span class="n">1</span>나를 소개하기</h3>
+          <p>닉네임 · 기수 · 멘토/멘티 · 성별을 고르면 캐릭터 외형에 그대로 반영돼요.</p>
+        </div>
+      </div>
+      <div class="step rv">
+        <div class="phone"><img src="assets/landing/web/02-gacha.jpg" alt="캐릭터 뽑기와 웰컴 선물 화면" loading="lazy"></div>
+        <div>
+          <h3><span class="n">2</span>캐릭터 뽑기</h3>
+          <p>기본 80% · 레어 17% · 레전드 3%. 뽑기와 함께 웰컴 선물과 쪽지가 도착해요.</p>
+        </div>
+      </div>
+      <div class="step rv">
+        <div class="phone"><img src="assets/landing/web/03-world.jpg" alt="월드에 입장한 화면" loading="lazy"></div>
+        <div>
+          <h3><span class="n">3</span>월드 입장</h3>
+          <p>바닥을 탭해 이동, 소파를 탭해 앉기. 두 손가락으로 확대·축소할 수 있어요.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">월드 안에서</p>
+    <h2>할 수 있는 것들</h2>
+    <p class="lead">천천히 둘러봐도 되고, 종목에 바로 뛰어들어도 됩니다.</p>
+
+    <div class="feats">
+
+      <div class="feat rv">
+        <div class="shot"><img src="assets/landing/web/04-locker-note.jpg" alt="기수 사물함에 쪽지를 남기는 화면" loading="lazy"></div>
+        <div class="body">
+          <h3>📮 사물함 쪽지 &amp; 선물</h3>
+          <p>기수별 사물함에 멘토·멘티·운영자에게 따뜻한 한마디를 남겨요. 웰컴 선물은 딱 한 번, 한 사람에게만 보낼 수 있습니다.</p>
+          <div class="chips"><span>기수별 사물함</span><span>선물은 단 한 번</span></div>
+        </div>
+      </div>
+
+      <div class="feat rv">
+        <div class="shot"><img src="assets/landing/web/06-tug.jpg" alt="줄다리기 토너먼트 화면" loading="lazy"></div>
+        <div class="body">
+          <h3>🪢 줄다리기 토너먼트</h3>
+          <p>1~4기가 붙는 4강 토너먼트. 버튼을 연타해 줄을 당기고, 우승하면 「줄다리기의 달인」 칭호가 이름 위에 붙어요.</p>
+          <div class="chips"><span>기수 대항전</span><span>연타 대결</span><span>달인 칭호</span></div>
+        </div>
+      </div>
+
+      <div class="feat rv">
+        <div class="shot"><img src="assets/landing/web/08-relay.jpg" alt="팀 계주 트랙 화면" loading="lazy"></div>
+        <div class="body">
+          <h3>🏃 팀 계주</h3>
+          <p>왼발·오른발을 번갈아 눌러 달리고 바통을 넘겨요. 내 차례가 아닐 땐 연타로 응원하면 우리 팀 주자가 실제로 빨라집니다.</p>
+          <div class="chips"><span>바통 인계</span><span>응원 게이지</span><span>실시간 순위표</span></div>
+        </div>
+      </div>
+
+      <div class="feat rv">
+        <div class="shot mid"><img src="assets/landing/web/09-fortune.jpg" alt="운세존 점술가 NPC 화면" loading="lazy"></div>
+        <div class="body">
+          <h3>🔮 운세존</h3>
+          <p>라운지 구석의 점술가 미르에게 걸어가 탭하면, 사주 풀이와 타로 3장 뽑기(과거·현재·미래)를 볼 수 있어요.</p>
+          <div class="chips"><span>사주 풀이</span><span>메이저 아르카나 22장</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN ============ -->
+<section>
+  <div class="wrap">
+    <div class="admin rv">
+      <div class="admin-badge">🛡 운영자 전용</div>
+      <p class="eyebrow">입장할 때 역할에서 <b>운영자</b>를 고르면 켜집니다</p>
+      <h2>진행은 운영자 손에서</h2>
+      <p class="lead">참가자 화면에는 보이지 않는, 모임을 이끌기 위한 기능들이에요.</p>
+
+      <div class="arow">
+        <div class="ico">📢</div>
+        <div>
+          <h3>전체 공지</h3>
+          <p>30자 이내의 한마디를 월드 전원 화면에 전광판처럼 띄웁니다. “잠시 후 계주 시작합니다!” 한 줄이면 모두가 모여요.</p>
+        </div>
+      </div>
+
+      <div class="arow">
+        <div class="ico">⚡</div>
+        <div>
+          <h3>O/X 퀴즈 시작 · 종료</h3>
+          <p>종목 메뉴의 퀴즈 카드는 운영자에게만 보입니다. 시작하면 월드 한가운데 퀴즈존이 열리고, 다음 문제로 넘기거나 언제든 끝낼 수 있어요.</p>
+        </div>
+      </div>
+
+      <div class="arow">
+        <div class="ico">🛡</div>
+        <div>
+          <h3>운영자 배지</h3>
+          <p>이름표에 운영자 배지가 붙어 누가 진행자인지 한눈에 보이고, 사물함에서도 ‘운영자에게’ 쪽지를 받을 수 있습니다.</p>
+        </div>
+      </div>
+
+      <p class="foot">※ 지금은 데모(POC)라 역할을 본인이 직접 고릅니다. 서버 연동 후에는 운영자 권한을 서버가 검증해요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INSTALL ============ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">앱처럼 쓰기</p>
+    <h2>홈 화면에 추가</h2>
+    <p class="lead">설치하면 주소창 없이 세로 고정으로 실행되고, 다시 열 때 더 빨라집니다.</p>
+    <div class="install">
+      <div class="ins rv"><b>🤖 Android · Chrome</b><span>메뉴 → “홈 화면에 추가”</span></div>
+      <div class="ins rv"><b>🍎 iOS · Safari</b><span>공유 버튼 → “홈 화면에 추가”</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <a class="cta" href="frontend/">팀메이트 월드 입장하기 →</a>
+    <p>데모(POC) 버전입니다 · 데이터는 데모용으로만 사용돼요<br>
+      <a class="gh" href="https://github.com/jamm0316/teammate-world">GitHub 저장소</a></p>
+  </div>
+</footer>
+
+<script>
+  // 스크롤에 맞춰 부드럽게 등장 — 한 번만, 과하지 않게
+  (function(){
+    var els = document.querySelectorAll('.rv');
+    if(!('IntersectionObserver' in window) ||
+       window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      els.forEach(function(el){ el.classList.add('on'); });
+      return;
+    }
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
+      });
+    }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
+    els.forEach(function(el){ io.observe(el); });
+  })();
+</script>
+
+</body>
+</html>
