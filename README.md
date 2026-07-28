@@ -1,6 +1,6 @@
 # 🌐 팀메이트 월드
 
-### ▶️ [지금 바로 입장하기](https://jamm0316.github.io/teammate-world/frontend/)
+### ▶️ [지금 바로 입장하기](https://jamm0316.github.io/teammate-world/frontend/) · 📖 [소개 페이지](https://jamm0316.github.io/teammate-world/)
 
 > 1~4기 다같이, 손 안에서 — 팀메이트 라이브 월드
 
@@ -14,6 +14,8 @@
 - **세로 라이브 월드** — 휴대폰 세로 화면에 맞춘 3D 월드에서 기수에 상관없이 다 같이 어울립니다.
 - **웰컴 선물 & 쪽지** — 입장과 함께 도착하는 웰컴 선물(3D 에셋)과 쪽지로 첫 만남을 챙겨줍니다. (선물은 단 한 번만 전송 가능)
 - **운세존 (사주·타로)** — 라운지 구석에 자리한 점술가 NPC에게 걸어가 탭하면 사주 풀이와 타로 3장 뽑기(메이저 아르카나 22장, 과거·현재·미래)를 볼 수 있습니다.
+- **종목 (줄다리기·팀 계주)** — 1~4기 4강 토너먼트 줄다리기와, 왼발·오른발 릴레이로 달리는 팀 계주. 우승 팀에게는 「줄다리기의 달인」·「계주의 달인」 칭호가 이름 위에 붙습니다.
+- **운영자 전용 진행 기능** — 입장할 때 역할을 `운영자`로 고르면 켜집니다. 전체 공지(30자, 전원 화면에 전광판 표시)와 O/X 퀴즈 시작·다음 문제·종료를 운영자만 조작할 수 있고, 이름표에 운영자 배지가 붙습니다. (POC 단계라 역할은 본인 선택 — 서버 연동 후 role 검증 예정)
 - **PWA 설치형** — `manifest.json` + Service Worker 기반으로 홈 화면 설치, standalone 실행, 재방문 시 빠른 로딩을 지원합니다.
 
 ## 📱 홈 화면에 추가하기 (앱처럼 사용)
@@ -33,6 +35,8 @@
 
 ```
 teammate-world/
+├── index.html           # 소개(랜딩) 페이지 — Pages 루트에서 서비스
+├── assets/landing/      # 소개 페이지용 스크린샷 (web/ = 화면용 축소본)
 ├── frontend/
 │   ├── index.html       # 앱 본체 (온보딩 · 뽑기 · 월드)
 │   ├── games.js         # 종목 (줄다리기 · 팀 계주)
@@ -53,9 +57,9 @@ teammate-world/
 정적 파일이므로 간단한 로컬 서버만 있으면 됩니다.
 
 ```bash
-cd frontend
-python3 -m http.server 8000
-# 브라우저에서 http://localhost:8000 접속
+python3 -m http.server 8000        # 저장소 루트에서
+# 소개 페이지: http://localhost:8000/
+# 앱:        http://localhost:8000/frontend/
 ```
 
 > Service Worker는 `https` 또는 `localhost`에서만 동작합니다.
