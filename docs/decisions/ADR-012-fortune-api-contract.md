@@ -39,6 +39,7 @@
 - POC 데모의 일주는 해시 기반 임시값이라 결과 화면에 데모 표기를 남겼다. 서버 연동 시 표기와 함께 제거한다.
 - 프론트 연동 지점은 `[MX]` 주석으로 표기했다 (`grep -rn "\[MX\]" frontend/fortune.js`).
 - 타로 결과는 `(category, cards)`가 같으면 항상 같아야 한다. 서버가 LLM을 쓰더라도 이 결정성은 캐시로 유지한다.
+- 카드 앞면은 `frontend/assets/tarot/NN.jpg`(라이더-웨이트, 퍼블릭 도메인) 22장이다. **파일명 `NN` = 요청·응답의 카드 번호 = `MAJOR` 인덱스**이므로, 서버는 번호만 주고받으면 되고 이미지 URL을 내려줄 필요가 없다. 합 1.2MB라 서비스 워커 PRECACHE에는 넣지 않고 뽑힌 카드부터 런타임 캐시에 담는다(`sw.js` 6번 분기). 이미지를 못 받으면 텍스트 카드(`faceSVG`)로 폴백한다.
 
 ## 표준 어휘(Translation)
 request–response over REST; client-side shuffle with server-side interpretation; deterministic reading per (category, spread)

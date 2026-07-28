@@ -466,37 +466,57 @@
   };
   const T_LUCK=['🌿 초록','💧 파랑','🔥 빨강','🌕 노랑','🤍 하양','💜 보라'];
 
-  /* ---- 카드 아트 ---- */
+  /* ---- 카드 아트 ----
+     앞면은 라이더-웨이트 실사 이미지(assets/tarot/NN.jpg)를 쓴다. 파일명 NN = 카드 번호 = MAJOR 인덱스.
+     원본 비율 ≈ 58:100이라 카드 박스도 전부 58/100으로 맞췄다(뒷면 SVG 포함). */
+  const CARD_SRC=n=>`assets/tarot/${String(n).padStart(2,'0')}.jpg`;
+
   function backSVG(){
     let pet='';
-    for(let i=0;i<8;i++) pet+=`<ellipse cx="30" cy="34" rx="4.2" ry="9" transform="rotate(${i*45} 30 48)"/>`;
+    for(let i=0;i<8;i++) pet+=`<ellipse cx="29" cy="36" rx="4.2" ry="9" transform="rotate(${i*45} 29 50)"/>`;
     let ray='';
-    for(let i=0;i<12;i++) ray+=`<line x1="30" y1="26" x2="30" y2="30" transform="rotate(${i*30} 30 48)"/>`;
-    return `<svg viewBox="0 0 60 96" class="ft-svg">
-      <rect width="60" height="96" rx="5" fill="#f2f0f8"/>
-      <rect x="2.6" y="2.6" width="54.8" height="90.8" rx="4" fill="none" stroke="#b6aed4" stroke-width="1.1"/>
+    for(let i=0;i<12;i++) ray+=`<line x1="29" y1="28" x2="29" y2="32" transform="rotate(${i*30} 29 50)"/>`;
+    return `<svg viewBox="0 0 58 100" class="ft-svg">
+      <rect width="58" height="100" rx="5" fill="#f2f0f8"/>
+      <rect x="2.6" y="2.6" width="52.8" height="94.8" rx="4" fill="none" stroke="#b6aed4" stroke-width="1.1"/>
       <g fill="none" stroke="#c6bee0" stroke-width=".9">
-        <circle cx="30" cy="48" r="18"/><circle cx="30" cy="48" r="12.5"/><circle cx="30" cy="48" r="6"/>
+        <circle cx="29" cy="50" r="18"/><circle cx="29" cy="50" r="12.5"/><circle cx="29" cy="50" r="6"/>
         ${pet}${ray}
       </g>
-      <circle cx="30" cy="48" r="2.4" fill="#b6aed4"/>
-      <circle cx="30" cy="14" r="2" fill="#c6bee0"/><circle cx="30" cy="82" r="2" fill="#c6bee0"/>
+      <circle cx="29" cy="50" r="2.4" fill="#b6aed4"/>
+      <circle cx="29" cy="15" r="2" fill="#c6bee0"/><circle cx="29" cy="85" r="2" fill="#c6bee0"/>
     </svg>`;
   }
+  // 카드 앞면 — 이미지. 오프라인 첫 방문 등으로 못 받으면 faceSVG()로 대체한다(bindFaces)
+  function faceHTML(c){
+    return `<img class="ft-img" src="${CARD_SRC(c.n)}" data-n="${c.n}" alt="${esc(c.ko)} (${esc(c.en)})" decoding="async">`;
+  }
+  function bindFaces(root){
+    root.querySelectorAll('.ft-img').forEach(im=>{
+      im.onerror=()=>{ im.outerHTML=faceSVG(MAJOR[+im.dataset.n]); };
+    });
+  }
+  // 이미지 폴백 앞면 (텍스트 카드)
   function faceSVG(c){
     // 긴 이름만 자간을 눌러 담는다 (짧은 이름까지 늘리면 글자가 벌어져 보인다)
-    const fit=c.ko.length>=7?' textLength="50" lengthAdjust="spacingAndGlyphs"':'';
+    const fit=c.ko.length>=7?' textLength="48" lengthAdjust="spacingAndGlyphs"':'';
     const enSize=c.en.length>=16?4.4:5;
-    return `<svg viewBox="0 0 60 96" class="ft-svg">
-      <rect width="60" height="96" rx="5" fill="#fdf7ec"/>
-      <rect x="2.6" y="2.6" width="54.8" height="90.8" rx="4" fill="none" stroke="#c9a44e" stroke-width="1.1"/>
-      <line x1="8" y1="18" x2="52" y2="18" stroke="#e0cfa4" stroke-width=".8"/>
-      <line x1="8" y1="66" x2="52" y2="66" stroke="#e0cfa4" stroke-width=".8"/>
-      <text x="30" y="14" text-anchor="middle" font-size="7.5" fill="#8a6a2a" font-family="serif">${ROMAN[c.n]}</text>
-      <text x="30" y="50" text-anchor="middle" font-size="24">${c.ic}</text>
-      <text x="30" y="78" text-anchor="middle" font-size="8" fill="#4a3a1e"${fit}>${c.ko}</text>
-      <text x="30" y="88" text-anchor="middle" font-size="${enSize}" fill="#a1906c">${c.en}</text>
+    return `<svg viewBox="0 0 58 100" class="ft-svg">
+      <rect width="58" height="100" rx="5" fill="#fdf7ec"/>
+      <rect x="2.6" y="2.6" width="52.8" height="94.8" rx="4" fill="none" stroke="#c9a44e" stroke-width="1.1"/>
+      <line x1="8" y1="19" x2="50" y2="19" stroke="#e0cfa4" stroke-width=".8"/>
+      <line x1="8" y1="69" x2="50" y2="69" stroke="#e0cfa4" stroke-width=".8"/>
+      <text x="29" y="15" text-anchor="middle" font-size="7.5" fill="#8a6a2a" font-family="serif">${ROMAN[c.n]}</text>
+      <text x="29" y="52" text-anchor="middle" font-size="24">${c.ic}</text>
+      <text x="29" y="81" text-anchor="middle" font-size="8" fill="#4a3a1e"${fit}>${c.ko}</text>
+      <text x="29" y="91" text-anchor="middle" font-size="${enSize}" fill="#a1906c">${c.en}</text>
     </svg>`;
+  }
+  // 뒤집기 전에 3장을 미리 받아 둔다 (뒤집었더니 빈 칸인 상황 방지). 실패해도 그대로 진행 — faceHTML이 폴백을 갖는다
+  function preloadCards(nos){
+    return Promise.all(nos.map(n=>new Promise(res=>{
+      const im=new Image(); im.onload=im.onerror=()=>res(); im.src=CARD_SRC(n);
+    })));
   }
 
   /* ---- 카테고리 선택 ---- */
@@ -563,11 +583,14 @@
       btnShuf.disabled=picked.length>0;
       if(picked.length===3){
         busy=true;
+        const nos=picked.map(i=>deck[i].n);
         /* [MX] 백엔드 구현 시: 아래 demoTarot()를
            await fetch('/api/fortune/tarot',{method:'POST',headers:{'Content-Type':'application/json'},
-             body:JSON.stringify({category:catKey,cards:picked.map(i=>deck[i].n)})}).then(r=>r.json())
+             body:JSON.stringify({category:catKey,cards:nos})}).then(r=>r.json())
            로 교체 (응답 스키마는 demoTarot() 반환값과 동일 — ADR-012) */
-        setTimeout(()=>{ close(); showTarot(demoTarot(catKey,picked.map(i=>deck[i].n))); },520);
+        // 카드 이미지 로딩과 마무리 연출을 함께 기다린다 (둘 중 늦는 쪽 기준)
+        Promise.all([preloadCards(nos), new Promise(res=>setTimeout(res,520))])
+          .then(()=>{ close(); showTarot(demoTarot(catKey,nos)); });
       }
     }
     function runShuffle(then){
@@ -620,7 +643,7 @@
               <div class="tr-pos">${POS[i].ic} ${POS[i].lab}</div>
               <div class="tr-flip" data-i="${i}"><div class="tr-in">
                 <div class="tr-face back">${backSVG()}</div>
-                <div class="tr-face front">${faceSVG(MAJOR[c.no])}</div>
+                <div class="tr-face front">${faceHTML(MAJOR[c.no])}</div>
               </div></div>
             </div>`).join('')}
         </div>
@@ -644,6 +667,7 @@
     ov.querySelector('#trRX').onclick=close;
     ov.querySelector('#trDone').onclick=close;
     ov.querySelector('#trAgain').onclick=()=>{close();openTarotCats();};
+    bindFaces(ov);
     // 3장을 순서대로 뒤집는다
     ov.querySelectorAll('.tr-flip').forEach((el,i)=>setTimeout(()=>{el.classList.add('on');vib(10);},260+i*280));
   }
@@ -739,7 +763,7 @@
     .tr-wrap{flex:1;min-height:0;position:relative;overflow-y:auto;padding:2px 12px 8px}
     .tr-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;align-content:start;transition:opacity .2s}
     .tr-grid.hide{opacity:0;pointer-events:none}
-    .tr-card{position:relative;padding:0;border:none;background:none;cursor:pointer;aspect-ratio:60/96;
+    .tr-card{position:relative;padding:0;border:none;background:none;cursor:pointer;aspect-ratio:58/100;
       border-radius:6px;transition:transform .18s cubic-bezier(.2,1.5,.4,1),filter .18s;
       animation:trDeal .4s cubic-bezier(.2,1.3,.4,1) both;animation-delay:calc(var(--i)*26ms)}
     .tr-card .ft-svg{width:100%;height:100%;display:block;border-radius:6px;box-shadow:0 3px 8px rgba(0,0,0,.5)}
@@ -754,7 +778,7 @@
       to{opacity:1;transform:none}}
     .tr-shufov{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px}
     .tr-shufov.on{display:flex}
-    .tr-stack{position:relative;width:76px;height:120px}
+    .tr-stack{position:relative;width:72px;height:124px}
     .tr-sc{position:absolute;inset:0;animation:trShuf .5s ease-in-out infinite alternate;
       animation-delay:calc(var(--i)*70ms)}
     .tr-sc .ft-svg{width:100%;height:100%;display:block;border-radius:7px;box-shadow:0 6px 16px rgba(0,0,0,.55)}
@@ -768,13 +792,18 @@
     .tr-spread{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 14px}
     .tr-slot{text-align:center}
     .tr-pos{font-family:var(--round);font-size:12px;color:var(--hot2);margin-bottom:6px}
-    .tr-flip{perspective:700px;aspect-ratio:60/96}
+    .tr-flip{perspective:700px;aspect-ratio:58/100}
     .tr-in{position:relative;width:100%;height:100%;transform-style:preserve-3d;
       transition:transform .6s cubic-bezier(.3,1.1,.4,1)}
     .tr-flip.on .tr-in{transform:rotateY(180deg)}
     .tr-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
     .tr-face.front{transform:rotateY(180deg)}
-    .tr-face .ft-svg{width:100%;height:100%;display:block;border-radius:7px;box-shadow:0 6px 16px rgba(0,0,0,.5)}
+    .tr-face .ft-svg,.tr-face .ft-img{width:100%;height:100%;display:block;border-radius:7px;
+      box-shadow:0 6px 16px rgba(0,0,0,.5)}
+    /* 실사 카드는 원본 비율이 58:100이라 cover로 잘려 나가는 부분이 없다 */
+    .tr-face .ft-img{object-fit:cover;background:#efe7d8}
+    .tr-flip.on{animation:trPop .6s cubic-bezier(.3,1.2,.4,1)}
+    @keyframes trPop{0%{transform:none}45%{transform:translateY(-8px) scale(1.06)}100%{transform:none}}
     .tr-kw{font-family:var(--body);font-size:11px;color:#221206;background:linear-gradient(100deg,var(--hot),var(--hot2));
       padding:2px 8px;border-radius:10px;margin-left:4px;white-space:nowrap}
     .tr-luck{font-family:var(--round);font-size:13px;color:var(--hot2);margin-top:10px}
