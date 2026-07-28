@@ -326,7 +326,7 @@
         </div>
         <div class="board" id="board"></div>
         <div class="mini" id="mini"><canvas id="miniC" width="72" height="118"></canvas></div>
-        <div class="hint">바닥을 탭해 이동 · 소파·의자를 탭하면 앉기 💺 · 두 손가락으로 확대·축소 🔍 · 사물함에 쪽지 ✉️</div>
+        <div class="hint">바닥을 탭해 이동 · 소파·의자를 탭하면 앉기 💺 · 두 손가락으로 확대·축소 🔍 · 사물함에 쪽지 ✉️ · 운세존에서 사주·타로 🔮</div>
       </div>
     </div>
   </div>
@@ -382,6 +382,7 @@ const BOOTHS=[
   {id:'quiz',  name:'⚡ O/X 퀴즈존',    x:230, y:815, w:640, h:250},
   {id:'net',   name:'🤝 기수 교류존',   x:70,  y:1150,w:430, h:520},
   {id:'bar',   name:'🍹 바 라운지',      x:600, y:1150,w:360, h:520},
+  {id:'fortune',name:'🔮 운세존',        x:52,  y:408, w:196, h:344},
 ];
 // O/X pads live in the quiz zone (world px, center-based)
 const PAD_O={cx:410, cy:940, w:210, h:140}, PAD_X={cx:690, cy:940, w:210, h:140};
@@ -390,10 +391,14 @@ const LOCKERS=[
   {gen:1,x:110,y:1250},{gen:2,x:300,y:1250},
   {gen:3,x:110,y:1450},{gen:4,x:300,y:1450},
 ];
+// 🔮 운세존 — 라운지 좌측 구석에 차린 점술가 자리 (world px)
+// x,y = NPC 앵커(bottom-center) · tx,ty = 1인용 테이블 앵커 · r = 상담 가능 거리
+const FORTUNE={x:152, y:556, tx:152, ty:612, r:150};
 // area rugs (world px, center-based). c = "r,g,b"
 const RUGS=[
   {x:550,y:640, w:380,h:170,c:'139,139,255'},
   {x:290,y:1560,w:300,h:150,c:'46,196,182'},
+  {x:150,y:625, w:212,h:200,c:'176,120,255'},
 ];
 // furniture — anchor = bottom-center in world px. accent tints piping/cushions.
 const FURNITURE=[
@@ -422,6 +427,8 @@ const FURNITURE=[
   {type:'plant',x:95,y:230},{type:'plant',x:1010,y:230},
   {type:'plant',x:95,y:800},{type:'plant',x:95,y:1700},
   {type:'plant',x:1030,y:900},{type:'plant',x:560,y:1120},
+  // 🔮 운세존 손님 의자 (점술가 맞은편 1인석) — 배열 끝에 붙여 기존 seat id를 보존한다
+  {type:'armchair',x:152,y:690,face:1,accent:'#b58cff'},
 ];
 // seat offsets [dx,dy] from a furniture anchor; character sits at anchor+offset
 const SEAT_OFF={
@@ -797,6 +804,8 @@ function buildGround(){
   RUGS.forEach(r=>html+=`<div class="rug" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;--rc:${r.c}"></div>`);
   // zone labels
   BOOTHS.forEach(b=>html+=`<div class="booth" style="left:${b.x}px;top:${b.y}px;width:${b.w}px;height:${b.h}px"><div class="name">${b.name}</div></div>`);
+  // 🔮 점술가 + 1인용 테이블 — 가구보다 먼저 그려야 앞쪽(손님 의자)이 위로 겹친다
+  if(window.Fortune) html+=window.Fortune.groundHTML(FORTUNE);
   // stage platform + screen + banners
   html+=`<div class="stageplat" style="left:${STAGE.x}px;top:${STAGE.y}px;width:${STAGE.w}px;height:${STAGE.h}px"></div>`;
   html+=`<div class="screen" style="left:${SCREEN.x}px;top:${SCREEN.y}px;width:${SCREEN.w}px;height:${SCREEN.h}px"><div class="scr-logo">팀메이트<span>Hello, 온라인 운동회!</span></div></div>`;
@@ -817,6 +826,7 @@ function buildGround(){
   g.innerHTML=html
    +`<div class="pad O" style="left:${PAD_O.cx}px;top:${PAD_O.cy}px;width:${PAD_O.w}px;height:${PAD_O.h}px"><span class="lab">YES</span>O</div>`
    +`<div class="pad X" style="left:${PAD_X.cx}px;top:${PAD_X.cy}px;width:${PAD_X.w}px;height:${PAD_X.h}px"><span class="lab">NO</span>X</div>`;
+  ftEl=$('#fteller'); ftNear=false;
 }
 let boardCollapsed=false;
 function buildBoard(){
@@ -840,6 +850,7 @@ function onTap(e){
   if(e.target.closest('.btn, .board, .mini, .hint'))return;
   const lk=e.target.closest('.locker');
   if(lk){openLocker(+lk.dataset.gen);return;}
+  if(e.target.closest('.fteller,.ftable')){tapFortune();return;}
   if(pinching||touchCount>1)return;      // ignore taps mid-pinch
   const r=$('#stage').getBoundingClientRect();
   // screen point -> world point (account for camera offset + zoom)
@@ -856,6 +867,20 @@ function onTap(e){
   selfE.sitting=null; selfE.pendingSit=null;
   selfE.tx=Math.max(24,Math.min(WORLD.w-24,wx));
   selfE.ty=Math.max(40,Math.min(WORLD.h-12,wy));
+}
+
+/* ---- 🔮 점술가 (운세존) ---- */
+let ftEl=null, ftNear=false;
+// 멀리서 누르면 이동 커맨드만 실행되고, 상담 가능 거리 안에서 다시 눌러야 창이 열린다
+function tapFortune(){
+  if(!window.Fortune){toast('운세 로딩 중…');return;}
+  if(Math.hypot(selfE.x-FORTUNE.x,selfE.y-FORTUNE.y)<=FORTUNE.r){window.Fortune.open();return;}
+  const seat=SEATS.find(s=>Math.abs(s.x-FORTUNE.x)<24&&s.y>FORTUNE.y&&s.y-FORTUNE.y<200);
+  const taken=seat&&entities.some(en=>en!==selfE&&(en.sitting===seat.id||en.pendingSit===seat.id));
+  selfE.sitting=null; selfE.pendingSit=null;
+  if(seat&&!taken){selfE.pendingSit=seat.id;selfE.tx=seat.x;selfE.ty=seat.y;}
+  else{selfE.tx=FORTUNE.x;selfE.ty=FORTUNE.y+118;}   // 자리가 찼으면 테이블 앞에 서서 기다린다
+  toast('점술가에게 가는 중… 도착하면 한 번 더 탭하세요 🔮');
 }
 
 /* ---- gen lockers (쪽지) ---- */
@@ -1127,6 +1152,11 @@ function loop(t){
     el.style.left=e.x+'px'; el.style.top=e.y+'px'; el.style.zIndex=Math.round(e.y);
     el.classList.toggle('moving',moving); el.classList.toggle('left',e.face<0);
   }
+  // 🔮 점술가와의 거리 → 말풍선 힌트 on/off (상태가 바뀔 때만 DOM을 건드린다)
+  if(ftEl){
+    const near=Math.hypot(selfE.x-FORTUNE.x,selfE.y-FORTUNE.y)<=FORTUNE.r;
+    if(near!==ftNear){ftNear=near;ftEl.classList.toggle('near',near);}
+  }
   // camera follows self, clamped to world bounds (visible area shrinks/grows with zoom)
   const visW=view.w/zoom, visH=view.h/zoom;
   let tcx=selfE.x-visW/2, tcy=selfE.y-visH/2;
@@ -1153,6 +1183,8 @@ function drawMini(){
   // pads
   ctx.fillStyle='rgba(63,214,196,.8)'; ctx.fillRect((PAD_O.cx-PAD_O.w/2)*sx,(PAD_O.cy-PAD_O.h/2)*sy,PAD_O.w*sx,PAD_O.h*sy);
   ctx.fillStyle='rgba(255,122,138,.8)'; ctx.fillRect((PAD_X.cx-PAD_X.w/2)*sx,(PAD_X.cy-PAD_X.h/2)*sy,PAD_X.w*sx,PAD_X.h*sy);
+  // 운세존 표시
+  ctx.fillStyle='rgba(186,116,255,.95)'; ctx.beginPath(); ctx.arc(FORTUNE.x*sx,FORTUNE.y*sy,2.6,0,7); ctx.fill();
   // viewport rect
   ctx.strokeStyle='rgba(60,40,20,.8)'; ctx.lineWidth=1;
   ctx.strokeRect(cam.x*sx,cam.y*sy,(view.w/zoom)*sx,(view.h/zoom)*sy);
@@ -1199,6 +1231,9 @@ window.addEventListener('load', maybeShowA2HS);
 
 <!-- 종목(줄다리기·계주): 위 인라인 스크립트의 전역을 공유하는 classic script -->
 <script src="games.js"></script>
+
+<!-- 운세(사주·타로): 운세존 점술가 NPC 상담 흐름 -->
+<script src="fortune.js"></script>
 
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}

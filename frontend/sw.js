@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'tw-v10';
-const PRECACHE = ['./', 'manifest.json', 'games.js',
+const CACHE_VERSION = 'tw-v11';
+const PRECACHE = ['./', 'manifest.json', 'games.js', 'fortune.js',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 
 // install: PRECACHE 저장 후 skipWaiting

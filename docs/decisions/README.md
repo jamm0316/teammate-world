@@ -20,6 +20,7 @@ ADR(Architecture Decision Record)은 프로젝트에서 내린 주요 설계 결
 - [ADR-005: 줄다리기 — 4팀 동시전 → 1:1 토너먼트](ADR-005-tug-of-war-1v1-tournament.md)
 - [ADR-006: 계주 판정 위치 — 서버 완전 판정](ADR-006-relay-server-validation.md)
 - [ADR-008: 캐릭터 저장 — 마스터 테이블 vs User 컬럼](ADR-008-character-schema.md)
+- [ADR-012: 운세(사주·타로) 전송 계약 — REST + 서버 풀이](ADR-012-fortune-api-contract.md)
 
 ## 시간순 전체 목록
 1. [ADR-001: 통신 프로토콜 — WebSocket(TCP) vs UDP](ADR-001-websocket-vs-udp.md) · [백엔드]
@@ -33,3 +34,4 @@ ADR(Architecture Decision Record)은 프로젝트에서 내린 주요 설계 결
 9. [ADR-009: 채팅 저장 — Pub/Sub 전파만](ADR-009-chat-persistence.md) · [백엔드]
 10. [ADR-010: PK 설계 — 복합 PK 금지, 단일 id](ADR-010-single-column-pk.md) · [백엔드]
 11. [ADR-011: 실시간 입력 전송 계약 — REST PATCH vs WS(STOMP)](ADR-011-realtime-transport-contract.md) · [백엔드]
+12. [ADR-012: 운세(사주·타로) 전송 계약 — REST + 서버 풀이](ADR-012-fortune-api-contract.md) · [기획+백엔드]
