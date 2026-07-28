@@ -38,10 +38,11 @@ teammate-world/
 │   ├── games.js         # 종목 (줄다리기 · 팀 계주)
 │   ├── fortune.js       # 운세존 (사주 · 타로)
 │   ├── manifest.json    # PWA 매니페스트
-│   ├── sw.js            # 서비스 워커 (캐시 버전 tw-v11)
+│   ├── sw.js            # 서비스 워커 (캐시 버전 tw-v12)
 │   └── assets/
 │       ├── icons/       # PWA 아이콘 세트
-│       └── gifts/       # 웰컴 선물 3D 에셋 (.obj/.mtl)
+│       ├── gifts/       # 웰컴 선물 3D 에셋 (.obj/.mtl)
+│       └── tarot/       # 타로 메이저 아르카나 22장 (00~21.jpg, 파일명 = 카드 번호)
 └── docs/
     ├── pwa-spec.md      # PWA 전환 스펙 문서
     └── decisions/       # 설계 결정 기록 (ADR)
