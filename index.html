@@ -36,7 +36,8 @@
       #14111d;
     -webkit-font-smoothing:antialiased;
   }
-  img{max-width:100%;display:block}
+  /* height:auto가 없으면 img의 width/height 속성이 높이로 굳어 세로로 늘어난다 */
+  img{max-width:100%;height:auto;display:block}
   a{color:inherit}
 
   .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
@@ -162,7 +163,7 @@
     <p class="cta-note">설치 없이 바로 시작 · 휴대폰 세로 화면 권장</p>
 
     <div class="hero-shot phone rv">
-      <img src="assets/landing/web/03b-world-wide.jpg" alt="팀메이트 월드 월드 화면" width="620" height="1340">
+      <img src="assets/landing/web/03b-world-wide.jpg" alt="팀메이트 월드 월드 화면" width="726" height="1568">
     </div>
   </div>
 </header>
@@ -176,21 +177,21 @@
 
     <div class="steps">
       <div class="step rv">
-        <div class="phone"><img src="assets/landing/web/01-onboarding.jpg" alt="닉네임과 기수를 고르는 온보딩 화면" loading="lazy"></div>
+        <div class="phone"><img src="assets/landing/web/01-onboarding.jpg" alt="닉네임과 기수를 고르는 온보딩 화면" width="726" height="1568" loading="lazy"></div>
         <div>
           <h3><span class="n">1</span>나를 소개하기</h3>
           <p>닉네임 · 기수 · 멘토/멘티 · 성별을 고르면 캐릭터 외형에 그대로 반영돼요.</p>
         </div>
       </div>
       <div class="step rv">
-        <div class="phone"><img src="assets/landing/web/02-gacha.jpg" alt="캐릭터 뽑기와 웰컴 선물 화면" loading="lazy"></div>
+        <div class="phone"><img src="assets/landing/web/02-gacha.jpg" alt="캐릭터 뽑기와 웰컴 선물 화면" width="726" height="1568" loading="lazy"></div>
         <div>
           <h3><span class="n">2</span>캐릭터 뽑기</h3>
           <p>기본 80% · 레어 17% · 레전드 3%. 뽑기와 함께 웰컴 선물과 쪽지가 도착해요.</p>
         </div>
       </div>
       <div class="step rv">
-        <div class="phone"><img src="assets/landing/web/03-world.jpg" alt="월드에 입장한 화면" loading="lazy"></div>
+        <div class="phone"><img src="assets/landing/web/03-world.jpg" alt="월드에 입장한 화면" width="726" height="1568" loading="lazy"></div>
         <div>
           <h3><span class="n">3</span>월드 입장</h3>
           <p>바닥을 탭해 이동, 소파를 탭해 앉기. 두 손가락으로 확대·축소할 수 있어요.</p>
@@ -210,7 +211,7 @@
     <div class="feats">
 
       <div class="feat rv">
-        <div class="shot"><img src="assets/landing/web/04-locker-note.jpg" alt="기수 사물함에 쪽지를 남기는 화면" loading="lazy"></div>
+        <div class="shot"><img src="assets/landing/web/04-locker-note.jpg" alt="기수 사물함에 쪽지를 남기는 화면" width="726" height="1568" loading="lazy"></div>
         <div class="body">
           <h3>📮 사물함 쪽지 &amp; 선물</h3>
           <p>기수별 사물함에 멘토·멘티·운영자에게 따뜻한 한마디를 남겨요. 웰컴 선물은 딱 한 번, 한 사람에게만 보낼 수 있습니다.</p>
@@ -219,7 +220,7 @@
       </div>
 
       <div class="feat rv">
-        <div class="shot"><img src="assets/landing/web/06-tug.jpg" alt="줄다리기 토너먼트 화면" loading="lazy"></div>
+        <div class="shot"><img src="assets/landing/web/06-tug.jpg" alt="줄다리기 토너먼트 화면" width="726" height="1568" loading="lazy"></div>
         <div class="body">
           <h3>🪢 줄다리기 토너먼트</h3>
           <p>1~4기가 붙는 4강 토너먼트. 버튼을 연타해 줄을 당기고, 우승하면 「줄다리기의 달인」 칭호가 이름 위에 붙어요.</p>
@@ -228,7 +229,7 @@
       </div>
 
       <div class="feat rv">
-        <div class="shot"><img src="assets/landing/web/08-relay.jpg" alt="팀 계주 트랙 화면" loading="lazy"></div>
+        <div class="shot"><img src="assets/landing/web/08-relay.jpg" alt="팀 계주 트랙 화면" width="726" height="1568" loading="lazy"></div>
         <div class="body">
           <h3>🏃 팀 계주</h3>
           <p>왼발·오른발을 번갈아 눌러 달리고 바통을 넘겨요. 내 차례가 아닐 땐 연타로 응원하면 우리 팀 주자가 실제로 빨라집니다.</p>
@@ -237,7 +238,7 @@
       </div>
 
       <div class="feat rv">
-        <div class="shot"><img src="assets/landing/web/09-fortune.jpg" alt="운세존 점술가 NPC 화면" loading="lazy"></div>
+        <div class="shot"><img src="assets/landing/web/09-fortune.jpg" alt="운세존 점술가 NPC 화면" width="726" height="1568" loading="lazy"></div>
         <div class="body">
           <h3>🔮 운세존</h3>
           <p>라운지 구석의 점술가 미르에게 걸어가 탭하면, 사주 풀이와 타로 3장 뽑기(과거·현재·미래)를 볼 수 있어요.</p>
