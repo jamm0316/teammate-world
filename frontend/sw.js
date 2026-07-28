@@ -1,4 +1,6 @@
-const CACHE_VERSION = 'tw-v11';
+const CACHE_VERSION = 'tw-v12';
+// 타로 카드 22장(assets/tarot/*.jpg, 합 1.2MB)은 PRECACHE에 넣지 않는다 — 설치를 무겁게 만들지 않고,
+// 아래 6번 동일 출처 cache-first가 뽑은 카드부터 런타임 캐시에 담는다.
 const PRECACHE = ['./', 'manifest.json', 'games.js', 'fortune.js',
   'assets/icons/icon-192.png', 'assets/icons/icon-512.png'];
 
