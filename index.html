@@ -58,9 +58,19 @@
   .cta:active{transform:translateY(2px)}
   .cta-note{font-size:13px;color:var(--dim);margin:12px 0 0}
 
-  .hero-shot{margin:38px auto 0;max-width:280px;max-height:400px;
-    -webkit-mask-image:linear-gradient(180deg,#000 72%,transparent);mask-image:linear-gradient(180deg,#000 72%,transparent)}
-  .hero-shot img{object-fit:cover;object-position:top;height:400px}
+  /* 화면을 따라다니는 CTA — 히어로 버튼이 사라지면 나타나고, 하단 CTA가 보이면 숨는다 */
+  .fab{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));z-index:60;
+    padding:14px 28px;border-radius:999px;text-decoration:none;white-space:nowrap;
+    font-family:var(--round);font-size:16px;color:#221206;
+    background:linear-gradient(100deg,var(--hot),var(--hot2));
+    box-shadow:0 14px 34px -10px rgba(0,0,0,.8),0 0 0 1px rgba(255,180,84,.3);
+    opacity:0;pointer-events:none;transform:translate(-50%,140%);
+    transition:opacity .25s ease,transform .25s ease}
+  .fab.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+  .fab:active{filter:brightness(.95)}
+
+  /* 화면 전체가 잘리지 않고 보이도록 — 폭으로만 크기를 잡는다 */
+  .hero-shot{margin:36px auto 0;max-width:212px}
 
   /* phone frame */
   .phone{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:#0f0c18;
@@ -70,23 +80,21 @@
   /* ---------- steps ---------- */
   .steps{display:grid;gap:26px;grid-template-columns:1fr}
   .step{display:grid;grid-template-columns:104px 1fr;gap:16px;align-items:center}
-  .step .phone{border-radius:14px;height:150px}
-  .step .phone img{height:100%;object-fit:cover;object-position:top}
+  .step .phone{border-radius:14px}
   .step h3{font-family:var(--round);font-weight:400;font-size:17px;margin:0 0 4px}
   .step .n{display:inline-block;font-family:var(--round);font-size:12px;color:#221206;
     background:var(--hot2);border-radius:20px;padding:1px 9px;margin-right:6px;vertical-align:2px}
   .step p{margin:0;color:var(--mut);font-size:14px}
 
   /* ---------- features ---------- */
-  .feats{display:grid;gap:18px;grid-template-columns:1fr}
-  .feat{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden}
-  .feat .shot{background:#0f0c18;border-bottom:1px solid var(--line);
-    max-height:290px;overflow:hidden;display:flex;justify-content:center}
-  .feat .shot img{width:100%;max-width:340px;object-fit:cover;object-position:top}
-  .feat .shot.mid img{object-position:center 47%}   /* 모달이 화면 가운데 있는 컷 */
-  .feat .body{padding:18px 20px 20px}
-  .feat h3{font-family:var(--round);font-weight:400;font-size:19px;margin:0 0 6px}
-  .feat p{margin:0;color:var(--mut);font-size:14.5px}
+  /* 기능 카드 — 화면을 통째로 보여주고 설명은 옆에 붙인다 */
+  .feats{display:grid;gap:16px;grid-template-columns:1fr}
+  .feat{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:center;
+    background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px}
+  .feat .shot{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0f0c18}
+  .feat .shot img{width:100%}
+  .feat h3{font-family:var(--round);font-weight:400;font-size:17px;margin:0 0 6px}
+  .feat p{margin:0;color:var(--mut);font-size:14px}
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
   .chips span{font-family:var(--round);font-size:12px;color:var(--mut);
     background:#241f37;border:1px solid var(--line);border-radius:20px;padding:4px 11px}
@@ -122,6 +130,7 @@
   @media (prefers-reduced-motion:reduce){
     html{scroll-behavior:auto}
     .rv{opacity:1;transform:none;transition:none}
+    .fab{transition:none}
   }
 
   /* ---------- wide ---------- */
@@ -130,11 +139,14 @@
     h2{font-size:32px}
     .steps{grid-template-columns:repeat(3,1fr);gap:22px}
     .step{grid-template-columns:1fr;text-align:center}
-    .step .phone{max-width:190px;height:250px;margin:0 auto 14px}
+    .step .phone{max-width:176px;margin:0 auto 14px}
     .feats{grid-template-columns:repeat(2,1fr)}
+    .feat{grid-template-columns:176px 1fr;gap:20px;padding:18px}
+    .feat h3{font-size:19px}
+    .feat p{font-size:14.5px}
     .install{grid-template-columns:1fr 1fr}
     .admin{padding:44px 40px}
-    .hero-shot{max-width:320px}
+    .hero-shot{max-width:236px}
   }
 </style>
 </head>
@@ -146,7 +158,7 @@
     <h1 class="logo">팀메이트<br>월드</h1>
     <p class="tag">1~4기 다같이, 손 안에서</p>
     <p class="sub">캐릭터를 뽑아 입장하고, 기수를 넘어 같은 공간에서 어울리는 모바일 라이브 월드.</p>
-    <a class="cta" href="frontend/">지금 입장하기 →</a>
+    <a class="cta" id="heroCta" href="frontend/">지금 입장하기 →</a>
     <p class="cta-note">설치 없이 바로 시작 · 휴대폰 세로 화면 권장</p>
 
     <div class="hero-shot phone rv">
@@ -225,7 +237,7 @@
       </div>
 
       <div class="feat rv">
-        <div class="shot mid"><img src="assets/landing/web/09-fortune.jpg" alt="운세존 점술가 NPC 화면" loading="lazy"></div>
+        <div class="shot"><img src="assets/landing/web/09-fortune.jpg" alt="운세존 점술가 NPC 화면" loading="lazy"></div>
         <div class="body">
           <h3>🔮 운세존</h3>
           <p>라운지 구석의 점술가 미르에게 걸어가 탭하면, 사주 풀이와 타로 3장 뽑기(과거·현재·미래)를 볼 수 있어요.</p>
@@ -291,27 +303,49 @@
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="wrap">
-    <a class="cta" href="frontend/">팀메이트 월드 입장하기 →</a>
+    <a class="cta" id="footCta" href="frontend/">팀메이트 월드 입장하기 →</a>
     <p>데모(POC) 버전입니다 · 데이터는 데모용으로만 사용돼요<br>
       <a class="gh" href="https://github.com/jamm0316/teammate-world">GitHub 저장소</a></p>
   </div>
 </footer>
 
+<a class="fab" id="fab" href="frontend/">지금 입장하기 →</a>
+
 <script>
-  // 스크롤에 맞춰 부드럽게 등장 — 한 번만, 과하지 않게
+  /* 스크롤 위치로 직접 판정한다 — 관찰자(IntersectionObserver)는 스크롤을 건너뛰며
+     이동했을 때 콜백이 오지 않아 내용이 투명한 채로 남는 경우가 있다. */
   (function(){
-    var els = document.querySelectorAll('.rv');
-    if(!('IntersectionObserver' in window) ||
-       window.matchMedia('(prefers-reduced-motion: reduce)').matches){
-      els.forEach(function(el){ el.classList.add('on'); });
-      return;
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        els    = [].slice.call(document.querySelectorAll('.rv')),
+        fab    = document.getElementById('fab'),
+        hero   = document.getElementById('heroCta'),
+        foot   = document.getElementById('footCta'),
+        queued = false;
+
+    if(reduce) els.forEach(function(el){ el.classList.add('on'); }), els = [];
+
+    function update(){
+      queued = false;
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+
+      // 화면에 들어온 것부터 한 번씩만 등장시킨다
+      for(var i = els.length - 1; i >= 0; i--){
+        var r = els[i].getBoundingClientRect();
+        if(r.top < vh * 0.92 && r.bottom > 0){ els[i].classList.add('on'); els.splice(i,1); }
+      }
+
+      // 히어로 CTA가 위로 지나갔고 하단 CTA는 아직 안 보일 때만 따라다니는 버튼을 띄운다
+      if(fab && hero && foot){
+        var h = hero.getBoundingClientRect(), f = foot.getBoundingClientRect();
+        fab.classList.toggle('on', h.bottom < 0 && f.top > vh);
+      }
     }
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(e){
-        if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); }
-      });
-    }, {rootMargin:'0px 0px -8% 0px', threshold:.08});
-    els.forEach(function(el){ io.observe(el); });
+    function onScroll(){ if(!queued){ queued = true; requestAnimationFrame(update); } }
+
+    update();
+    addEventListener('scroll', onScroll, {passive:true});
+    addEventListener('resize', onScroll);
+    addEventListener('load', update);
   })();
 </script>
 
