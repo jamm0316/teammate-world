@@ -659,12 +659,22 @@
 
   /* ===================== 종목 메뉴 ===================== */
   function openMenu(){
+    const Q=window.Quiz;
+    // O/X 퀴즈는 운영자만 시작·종료할 수 있으므로 카드 자체를 운영자에게만 노출한다
+    const admin=!!(Q&&Q.isAdmin()), quizOn=!!(Q&&Q.isOn());
+    const quizCard=admin
+      ? `<button class="gm-card wide${quizOn?' on':''}" id="gmQuiz"><span class="gm-ic">⚡</span>
+         <span class="gm-txt">O/X 퀴즈 ${quizOn?'종료':'시작'}
+         <small>${quizOn?'발판·질문창을 걷습니다':'퀴즈존에 발판·질문창이 열립니다'}</small></span></button>`
+      : '';
+    const note=admin?'':`<div class="gm-note">O/X 퀴즈는 운영자가 시작하면 퀴즈존에 열려요</div>`;
     const bg=document.createElement('div'); bg.className='modalbg';
     bg.innerHTML=`<div class="modal">
       <div class="mhead">🎮 종목 선택<button class="x" id="gmX">✕</button></div>
       <div class="gm-pick"><button class="gm-card" id="gmTug"><span class="gm-ic">🪢</span>줄다리기<small>팀 연타 대결</small></button>
-      <button class="gm-card" id="gmRelay"><span class="gm-ic">🏃</span>팀 계주<small>왼발·오른발 릴레이</small></button></div>
-      <div class="gm-note">O/X 퀴즈는 월드의 퀴즈존에서 진행돼요</div>
+      <button class="gm-card" id="gmRelay"><span class="gm-ic">🏃</span>팀 계주<small>왼발·오른발 릴레이</small></button>
+      ${quizCard}</div>
+      ${note}
     </div>`;
     document.body.appendChild(bg);
     const close=()=>bg.remove();
@@ -672,6 +682,8 @@
     bg.querySelector('#gmX').onclick=close;
     bg.querySelector('#gmTug').onclick=()=>{close();startTug();};
     bg.querySelector('#gmRelay').onclick=()=>{close();startRelay();};
+    const qb=bg.querySelector('#gmQuiz');
+    if(qb)qb.onclick=()=>{close(); quizOn?Q.end():Q.start();};
   }
 
   /* ===================== 스타일 ===================== */
@@ -888,12 +900,17 @@
     .rl-ftbtn:active:not(:disabled){transform:scale(.96)}
 
     /* 메뉴 */
-    .gm-pick{display:flex;gap:10px;margin-top:16px}
+    .gm-pick{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
     .gm-card{flex:1;border:1.5px solid #3a3352;background:#241f37;color:var(--ink);border-radius:16px;padding:20px 10px;cursor:pointer;
       font-family:var(--round);font-size:16px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:.15s}
     .gm-card:active{transform:scale(.97);border-color:var(--hot)}
     .gm-card .gm-ic{font-size:38px}
     .gm-card small{font-family:var(--body);font-size:12px;color:var(--mut)}
+    /* O/X 퀴즈(운영자 전용) — 줄바꿈해서 한 줄을 다 쓰는 가로형 카드 */
+    .gm-card.wide{flex:1 1 100%;flex-direction:row;justify-content:center;align-items:center;gap:12px;padding:15px 12px;text-align:left}
+    .gm-card.wide .gm-ic{font-size:28px}
+    .gm-card.wide .gm-txt{display:flex;flex-direction:column;gap:2px}
+    .gm-card.wide.on{border-color:var(--hot);background:#2d2135}
     .gm-note{font-family:var(--round);font-size:12px;color:var(--mut);text-align:center;margin-top:14px}`;
     document.head.appendChild(s);
   }

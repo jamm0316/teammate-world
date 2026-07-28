@@ -132,6 +132,15 @@
   .booth .name{margin-top:6px;font-family:var(--round);font-size:13px;color:#5a4a30;
     background:rgba(255,255,255,.55);padding:3px 12px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.15)}
 
+  /* O/X 발판·로고는 퀴즈가 시작될 때만 월드에 깔린다 (.oxzone.on) */
+  /* 래퍼에 transform을 주면 containing block이 되어 발판의 월드 좌표가 깨지므로 opacity만 쓴다 */
+  .oxzone{display:none}
+  .oxzone.on{display:block;animation:oxFade .32s ease both}
+  @keyframes oxFade{from{opacity:0}to{opacity:1}}
+  .oxlogo{position:absolute;transform:translate(-50%,-50%);padding:7px 9px;border-radius:16px;
+    background:rgba(255,255,255,.86);box-shadow:0 6px 16px -8px rgba(0,0,0,.5)}
+  .oxlogo img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+
   .pad{position:absolute;transform:translate(-50%,-50%);border-radius:24px;display:flex;align-items:center;justify-content:center;
     font-family:var(--display);font-size:48px;transition:box-shadow .25s}
   .pad .lab{position:absolute;top:6px;font-family:var(--round);font-size:11px;opacity:.85}
@@ -140,10 +149,14 @@
   .pad.X{background:radial-gradient(circle,rgba(255,122,138,.32),rgba(255,122,138,.10));border:3px solid var(--x);color:var(--x);
     box-shadow:0 0 28px rgba(255,122,138,.35), inset 0 0 30px rgba(255,122,138,.25)}
 
-  /* scoreboard (LED) — fixed to viewport */
-  .board{position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(92%,520px);
+  /* scoreboard (LED) — fixed to viewport. 퀴즈 진행 중에만 뜬다 (.board.on) */
+  .board{display:none;position:absolute;left:50%;top:12px;transform:translateX(-50%);width:min(92%,520px);
     background:linear-gradient(#0e0c16,#191527);border:1px solid #3a3352;border-radius:14px;
     padding:9px 14px;box-shadow:0 10px 24px -10px #000;z-index:8;transition:padding .2s, width .2s}
+  /* translateX(-50%) 중앙정렬을 유지해야 하므로 .oxzone과 키프레임을 공유하지 않는다 */
+  .board.on{display:block;animation:boardIn .32s ease both}
+  @keyframes boardIn{from{opacity:0;transform:translateX(-50%) translateY(-8px)}
+                     to{opacity:1;transform:translateX(-50%)}}
   .board .q{font-family:var(--round);font-size:clamp(12px,2.4vw,15px);text-align:center;color:var(--ink);line-height:1.3;padding:0 18px}
   .board .qn{color:var(--hot2);font-size:11px}
   .board .counts{display:flex;justify-content:center;gap:18px;margin-top:6px}
@@ -313,7 +326,8 @@
       <div class="right">
         <button class="btn" id="btnNpc">NPC ON</button>
         <button class="btn hot" id="btnGames">🎮 종목</button>
-        <button class="btn" id="btnNext">다음 문제 ▶</button>
+        <button class="btn" id="btnNext" style="display:none">다음 문제 ▶</button>
+        <button class="btn" id="btnQuizEnd" style="display:none">퀴즈 종료 ✕</button>
         <button class="btn" id="btnNotice" style="display:none">📢 공지</button>
         <button class="btn" id="btnReset">↺</button>
       </div>
@@ -384,8 +398,11 @@ const BOOTHS=[
   {id:'bar',   name:'🍹 바 라운지',      x:600, y:1150,w:360, h:520},
   {id:'fortune',name:'🔮 운세존',        x:52,  y:408, w:196, h:344},
 ];
-// O/X pads live in the quiz zone (world px, center-based)
-const PAD_O={cx:410, cy:940, w:210, h:140}, PAD_X={cx:690, cy:940, w:210, h:140};
+// O/X pads live in the quiz zone (world px, center-based).
+// 두 발판 사이에 팀메이트 로고가 들어가도록 간격을 130px 벌려 뒀다(퀴즈존 x 230~870 안에 유지).
+const PAD_O={cx:380, cy:940, w:210, h:140}, PAD_X={cx:720, cy:940, w:210, h:140};
+// 발판 사이 가운데 바닥에 깔리는 팀메이트 로고 (world px, center-based)
+const OX_LOGO={cx:550, cy:940, w:120, h:74};
 // gen lockers inside the 기수 교류존 (world px, top-left based)
 const LOCKERS=[
   {gen:1,x:110,y:1250},{gen:2,x:300,y:1250},
@@ -604,7 +621,7 @@ function rollChar(gender){const rarity=rollRarity();const arr=OUTFIT[rarity];con
     skinI:Math.floor(Math.random()*SKIN.length),style:styles[Math.floor(Math.random()*styles.length)]};}
 
 /* ===================== state ===================== */
-let me=null; let entities=[]; let selfE=null; let botsOn=true; let qidx=0;
+let me=null; let entities=[]; let selfE=null; let botsOn=true; let qidx=0; let quizOn=false;
 const $=s=>document.querySelector(s);
 function toast(t){const p=$('#pop');p.textContent=t;p.classList.add('show');clearTimeout(p._t);p._t=setTimeout(()=>p.classList.remove('show'),1500);}
 
@@ -726,7 +743,8 @@ function enterGame(){
   buildGround(); buildBoard();
   /* [MX] 백엔드 구현 시: PATCH /api/quiz/current 붙여야 함 — 운영자만 문제 전환(서버가 role 검증).
      전파는 서버가 WS(STOMP) /topic/quiz 로 broadcast → 전원 buildBoard() */
-  $('#btnNext').onclick=async()=>{qidx=(qidx+1)%QUESTIONS.length;await sset('quiz:idx',String(qidx),true);buildBoard();toast('다음 문제!');};
+  $('#btnNext').onclick=nextQuestion;
+  $('#btnQuizEnd').onclick=()=>endQuiz();
   $('#btnNpc').onclick=()=>{botsOn=!botsOn;$('#btnNpc').textContent='NPC '+(botsOn?'ON':'OFF');$('#btnNpc').classList.toggle('off',!botsOn);if(botsOn)spawnBots();else removeBots();};
   $('#btnGames').onclick=()=>{if(window.Games)window.Games.openMenu();else toast('종목 로딩 중…');};
   if(me.role==='admin'){$('#btnNotice').style.display='';$('#btnNotice').onclick=openNoticeComposer;}
@@ -739,16 +757,64 @@ function enterGame(){
   entities=[selfE]; ensureEl(selfE);
   cam.x=selfE.x-view.w/2; cam.y=selfE.y-view.h/2;
   spawnBots();
-  loadQ();
+  applyQuizState();   // 기본은 퀴즈 OFF — 발판·질문창·운영 버튼 모두 숨김 상태로 시작
+  pollQuiz(true);     // 이미 진행 중인 퀴즈가 있으면 따라붙는다
   initNotice();
   refreshLockerBadges();
-  /* [MX] 백엔드 구현 시: 아래 setInterval 폴링 3종은 전부 제거 대상.
-     pushSelf → WS publish(초당 최대 5회, ADR-003), pollRemote → WS subscribe, refreshLockerBadges → GET(주기 완화) */
+  /* [MX] 백엔드 구현 시: 아래 setInterval 폴링 4종은 전부 제거 대상.
+     pushSelf → WS publish(초당 최대 5회, ADR-003), pollRemote/pollQuiz → WS subscribe, refreshLockerBadges → GET(주기 완화) */
   setInterval(pushSelf,1500); setInterval(pollRemote,1500); setInterval(refreshLockerBadges,8000);
+  setInterval(()=>pollQuiz(),1500);
   requestAnimationFrame(loop);
 }
-/* [MX] 백엔드 구현 시: GET /api/quiz/current 붙여야 함(입장 시 1회) + WS(STOMP) subscribe /topic/quiz(이후 갱신) */
-async function loadQ(){const v=await sget('quiz:idx',true);if(v!=null){qidx=Math.max(0,Math.min(QUESTIONS.length-1,+v));buildBoard();}}
+/* ---- ⚡ O/X 퀴즈 — 운영자가 종목 메뉴에서 시작/종료하고, 상태는 월드 전원에게 공유된다 ---- */
+function isQuizAdmin(){return !!(me&&me.role==='admin');}
+// 발판·로고·질문창·운영 버튼을 현재 quizOn 값에 맞춰 한 번에 켜고 끈다
+function applyQuizState(){
+  const z=$('#oxzone'); if(z)z.classList.toggle('on',quizOn);
+  const b=$('#board');  if(b)b.classList.toggle('on',quizOn);
+  const showAdminBtns=quizOn&&isQuizAdmin();
+  $('#btnNext').style.display    = showAdminBtns?'':'none';
+  $('#btnQuizEnd').style.display = showAdminBtns?'':'none';
+  if(quizOn)buildBoard();
+}
+/* [MX] 백엔드 구현 시: POST /api/quiz/start 붙여야 함 — 운영자만(서버가 role 검증).
+   전파는 서버가 WS(STOMP) /topic/quiz 로 broadcast → 전원 applyQuizState() */
+async function startQuiz(){
+  if(!isQuizAdmin()){toast('운영자만 퀴즈를 시작할 수 있어요');return;}
+  qidx=0; quizOn=true;
+  await sset('quiz:idx','0',true); await sset('quiz:on','1',true);
+  applyQuizState(); toast('⚡ O/X 퀴즈 시작! 퀴즈존 발판으로 이동하세요');
+}
+/* [MX] 백엔드 구현 시: POST /api/quiz/end 붙여야 함 — 운영자만. 전파는 /topic/quiz broadcast */
+async function endQuiz(msg){
+  if(!isQuizAdmin())return;
+  quizOn=false;
+  await sset('quiz:on','0',true);
+  applyQuizState(); toast(msg||'퀴즈를 종료했어요');
+}
+// 마지막 문제에서 누르면 다음으로 넘기지 않고 그대로 종료한다
+async function nextQuestion(){
+  if(!isQuizAdmin())return;
+  if(qidx>=QUESTIONS.length-1){await endQuiz('🎉 마지막 문제까지 완료! 퀴즈를 종료했어요');return;}
+  qidx++; await sset('quiz:idx',String(qidx),true);
+  buildBoard(); toast(`다음 문제! (Q${qidx+1}/${QUESTIONS.length})`);
+}
+/* [MX] 백엔드 구현 시: GET /api/quiz/current 붙여야 함(입장 시 1회) + WS(STOMP) subscribe /topic/quiz(이후 갱신).
+   아래 폴링은 그때 제거 대상 */
+async function pollQuiz(initial){
+  const on=await sget('quiz:on',true);
+  const v =await sget('quiz:idx',true);
+  const nextOn=on==='1';
+  const nextIdx=v!=null?Math.max(0,Math.min(QUESTIONS.length-1,+v)):qidx;
+  if(nextOn===quizOn&&nextIdx===qidx)return;   // 변화가 없으면 DOM을 건드리지 않는다
+  const wasOn=quizOn; quizOn=nextOn; qidx=nextIdx;
+  applyQuizState();
+  if(nextOn&&!wasOn)toast(initial?'⚡ O/X 퀴즈가 진행 중이에요 — 퀴즈존으로!':'⚡ O/X 퀴즈가 시작됐어요!');
+  else if(!nextOn&&wasOn&&!initial)toast('O/X 퀴즈가 종료됐어요');
+}
+// 종목 메뉴(games.js)에서 쓰도록 노출 — index.html의 let 전역은 window에 올라가지 않는다
+window.Quiz={start:startQuiz,end:endQuiz,isOn:()=>quizOn,isAdmin:isQuizAdmin};
 
 // ---- furniture / decor SVG ----
 function frnSVG(type,accent){
@@ -822,10 +888,14 @@ function buildGround(){
      style="left:${l.x}px;top:${l.y}px;background:linear-gradient(180deg,${GENC[l.gen]},${shade(GENC[l.gen],-44)})">
      <div class="glab">${GEN[l.gen]} 사물함</div><div class="slot"></div><div class="handle"></div>
      <div class="badge" id="lkb${l.gen}" style="display:none">0</div></div>`; });
-  // O/X pads (world px)
+  // O/X pads + 가운데 팀메이트 로고 (world px) — 퀴즈 시작 전에는 래퍼가 숨어 있다
   g.innerHTML=html
+   +`<div class="oxzone${quizOn?' on':''}" id="oxzone">`
    +`<div class="pad O" style="left:${PAD_O.cx}px;top:${PAD_O.cy}px;width:${PAD_O.w}px;height:${PAD_O.h}px"><span class="lab">YES</span>O</div>`
-   +`<div class="pad X" style="left:${PAD_X.cx}px;top:${PAD_X.cy}px;width:${PAD_X.w}px;height:${PAD_X.h}px"><span class="lab">NO</span>X</div>`;
+   +`<div class="oxlogo" style="left:${OX_LOGO.cx}px;top:${OX_LOGO.cy}px;width:${OX_LOGO.w}px;height:${OX_LOGO.h}px">`
+   +`<img src="assets/icons/logo_transparent.webp" alt="팀메이트" decoding="async"></div>`
+   +`<div class="pad X" style="left:${PAD_X.cx}px;top:${PAD_X.cy}px;width:${PAD_X.w}px;height:${PAD_X.h}px"><span class="lab">NO</span>X</div>`
+   +`</div>`;
   ftEl=$('#fteller'); ftNear=false;
 }
 let boardCollapsed=false;
@@ -997,7 +1067,8 @@ function botAI(b,now){
     const empty=SEATS.filter(s=>!entities.some(en=>en.sitting===s.id||en.pendingSit===s.id));
     if(empty.length){const s=empty[Math.floor(Math.random()*empty.length)]; b.tx=s.x;b.ty=s.y;b.pendingSit=s.id; return;}
   }
-  if(roll<0.6){const p=Math.random()<.5?PAD_O:PAD_X; b.tx=p.cx+(Math.random()-.5)*(p.w-30); b.ty=p.cy+(Math.random()-.5)*(p.h-30);}
+  // 퀴즈가 열려 있을 때만 발판으로 몰려간다 — 꺼져 있으면 그냥 부스를 돌아다닌다
+  if(quizOn&&roll<0.6){const p=Math.random()<.5?PAD_O:PAD_X; b.tx=p.cx+(Math.random()-.5)*(p.w-30); b.ty=p.cy+(Math.random()-.5)*(p.h-30);}
   else {const z=BOOTHS[Math.floor(Math.random()*BOOTHS.length)]; b.tx=z.x+30+Math.random()*(z.w-60); b.ty=z.y+30+Math.random()*(z.h-60);}
 }
 
@@ -1180,9 +1251,11 @@ function drawMini(){
   // furniture blocks
   ctx.fillStyle='rgba(90,70,40,.5)';
   FURNITURE.forEach(f=>ctx.fillRect((f.x-14)*sx,(f.y-14)*sy,28*sx,12*sy));
-  // pads
-  ctx.fillStyle='rgba(63,214,196,.8)'; ctx.fillRect((PAD_O.cx-PAD_O.w/2)*sx,(PAD_O.cy-PAD_O.h/2)*sy,PAD_O.w*sx,PAD_O.h*sy);
-  ctx.fillStyle='rgba(255,122,138,.8)'; ctx.fillRect((PAD_X.cx-PAD_X.w/2)*sx,(PAD_X.cy-PAD_X.h/2)*sy,PAD_X.w*sx,PAD_X.h*sy);
+  // pads — 퀴즈 진행 중에만 미니맵에 표시
+  if(quizOn){
+    ctx.fillStyle='rgba(63,214,196,.8)'; ctx.fillRect((PAD_O.cx-PAD_O.w/2)*sx,(PAD_O.cy-PAD_O.h/2)*sy,PAD_O.w*sx,PAD_O.h*sy);
+    ctx.fillStyle='rgba(255,122,138,.8)'; ctx.fillRect((PAD_X.cx-PAD_X.w/2)*sx,(PAD_X.cy-PAD_X.h/2)*sy,PAD_X.w*sx,PAD_X.h*sy);
+  }
   // 운세존 표시
   ctx.fillStyle='rgba(186,116,255,.95)'; ctx.beginPath(); ctx.arc(FORTUNE.x*sx,FORTUNE.y*sy,2.6,0,7); ctx.fill();
   // viewport rect
